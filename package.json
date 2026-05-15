@@ -46,6 +46,7 @@
     },
     "linux": {
       "category": "Network",
+      "maintainer": "qbitUI <qbitui@users.noreply.github.com>",
       "target": [
         { "target": "AppImage" },
         { "target": "deb" }
