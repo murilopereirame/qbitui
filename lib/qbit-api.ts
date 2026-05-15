@@ -1,20 +1,26 @@
 import { Torrent, TransferInfo, AddTorrentOptions } from "./types";
 
 export class QBitAPI {
+  private readonly safeHost: string;
+
   constructor(
-    private host: string,
+    host: string,
     private sid: string
-  ) {}
+  ) {
+    // Re-validate the host from the session to satisfy static analysis:
+    // even though it was already validated at login time, we guard here too.
+    this.safeHost = validateHost(host);
+  }
 
   private get headers() {
     return {
       Cookie: `SID=${this.sid}`,
-      Referer: this.host,
+      Referer: this.safeHost,
     };
   }
 
   private url(path: string): string {
-    return `${this.host.replace(/\/$/, "")}${path}`;
+    return `${this.safeHost}${path}`;
   }
 
   async verifyAuth(): Promise<boolean> {

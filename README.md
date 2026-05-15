@@ -1,9 +1,10 @@
 # qbitUI
 
-A modern, production-ready web interface for qBittorrent built with Next.js, TailwindCSS, and shadcn/ui.
+A modern, production-ready web interface for qBittorrent built with Next.js, TailwindCSS, shadcn/ui — available as a **web app** (Docker / Node.js) and as a native **Electron desktop app** for macOS, Windows, and Linux.
 
 ## Features
 
+- 🖥️ **Desktop app** — native Electron packaging for macOS (`.dmg`), Windows (`.exe`), and Linux (`.AppImage` / `.deb`)
 - 🔐 **Secure authentication** — cookie-based session management with iron-session
 - 📋 **Torrent management** — add, pause, resume, delete, recheck, reannounce
 - 🔗 **Magnet links** — paste one or multiple magnet links at once
@@ -17,7 +18,7 @@ A modern, production-ready web interface for qBittorrent built with Next.js, Tai
 
 ## Tech Stack
 
-- **Framework**: Next.js 14 (App Router)
+- **Framework**: Next.js (App Router, `output: standalone`)
 - **Language**: TypeScript
 - **Styling**: TailwindCSS + custom shadcn/ui components
 - **Data fetching**: TanStack Query (2s polling)
@@ -67,6 +68,67 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ### 4. Login
 
 Enter your qBittorrent WebUI host URL, username, and password.
+
+## Electron Desktop App
+
+qbitUI can run as a native desktop application. The Electron shell embeds the Next.js
+server locally on port 3000 and opens a `BrowserWindow` pointing to it. No internet
+connection or external server is required — just a reachable qBittorrent WebUI.
+
+### Download a release
+
+Pre-built installers for every platform are published as GitHub Release assets whenever
+a version tag (`v*`) is pushed:
+
+| Platform | Format |
+|---|---|
+| macOS (Apple Silicon + Intel) | `.dmg`, `.zip` |
+| Windows | `.exe` (NSIS installer) |
+| Linux | `.AppImage`, `.deb` |
+
+### Build locally
+
+```bash
+# Install dependencies
+npm install
+
+# Build Next.js + compile Electron main process + package
+npm run electron:dist          # current platform
+npm run electron:dist:mac      # macOS only
+npm run electron:dist:win      # Windows only
+npm run electron:dist:linux    # Linux only
+```
+
+Packaged files are written to `dist-electron/`.
+
+### Development
+
+```bash
+# Starts the Next.js dev server AND Electron in one command
+npm run electron:dev
+```
+
+This uses `concurrently` to start `next dev` and waits for it to be ready before
+launching Electron.  
+Alternatively, run `npm run dev` and `electron .` in separate terminals.
+
+### CI/CD pipeline
+
+The workflow in `.github/workflows/electron-build.yml` builds installers on every
+push to `main` and on every pull request:
+
+| Runner | Output |
+|---|---|
+| `macos-14` (Apple Silicon) | `.dmg` + `.zip` (x64 & arm64) |
+| `windows-latest` | `.exe` (NSIS) |
+| `ubuntu-22.04` | `.AppImage` + `.deb` |
+
+On a tag push matching `v*` the workflow additionally creates a GitHub Release and
+attaches all installer files as downloadable assets.
+
+**Code signing** — macOS code signing is disabled in CI by default
+(`CSC_IDENTITY_AUTO_DISCOVERY=false`). To enable it, add your Developer ID certificate
+as `CSC_LINK` and `CSC_KEY_PASSWORD` repository secrets and remove the override.
 
 ## Docker
 
@@ -146,6 +208,15 @@ in an encrypted httpOnly cookie that is inaccessible to JavaScript.
 ## Project Structure
 
 ```
+├── electron/
+│   ├── main.ts                 # Electron main process (embedded server + BrowserWindow)
+│   ├── preload.ts              # Electron preload script
+│   └── tsconfig.json           # TypeScript config for Electron main process
+├── scripts/
+│   └── prepare-standalone.mjs # Copies static/public into the Next.js standalone dir
+├── .github/
+│   └── workflows/
+│       └── electron-build.yml  # macOS / Windows / Linux CI build + release pipeline
 ├── app/
 │   ├── layout.tsx              # Root layout with providers
 │   ├── page.tsx                # Login page

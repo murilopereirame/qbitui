@@ -22,7 +22,9 @@ export const sessionOptions: SessionOptions = {
   },
   cookieName: "qbitui_session",
   cookieOptions: {
-    secure: process.env.NODE_ENV === "production",
+    // In the Electron app the embedded Next.js server is reached over plain HTTP
+    // on localhost, so we must not set the Secure flag.
+    secure: process.env.NODE_ENV === "production" && process.env.ELECTRON_APP !== "true",
     httpOnly: true,
     sameSite: "lax",
   },

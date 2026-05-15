@@ -34,8 +34,10 @@ yarn-error.log*
 .env*
 !.env.example
 
-# vercel
-.vercel
+# electron
+/electron/dist/
+/dist-electron/
+
 
 # typescript
 *.tsbuildinfo
