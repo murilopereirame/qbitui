@@ -1,0 +1,9 @@
+services:
+  qbitui:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - SESSION_SECRET=${SESSION_SECRET:-change-me-to-a-random-secret-at-least-32-chars}
+      - NEXT_PUBLIC_DEFAULT_HOST=${NEXT_PUBLIC_DEFAULT_HOST:-http://localhost:8080}
+    restart: unless-stopped
