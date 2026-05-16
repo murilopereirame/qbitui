@@ -21,6 +21,12 @@ function AuthGuard() {
   }, [loadCredentials]);
 
   useEffect(() => {
+    if (!isLoading) {
+      SplashScreen.hideAsync();
+    }
+  }, [isLoading]);
+
+  useEffect(() => {
     if (isLoading) return;
 
     const inTabsGroup = segments[0] === '(tabs)';
@@ -30,8 +36,6 @@ function AuthGuard() {
     } else if (credentials && !inTabsGroup) {
       router.replace('/(tabs)');
     }
-
-    SplashScreen.hideAsync();
   }, [credentials, isLoading, segments, router]);
 
   return null;
