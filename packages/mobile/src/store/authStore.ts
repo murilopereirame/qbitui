@@ -15,10 +15,14 @@ export const useAuthStore = create<AuthState>((set) => ({
   username: '',
   setAuth: (host, sid, username) => {
     set({ host, sid, username });
-    SecureStore.setItemAsync('auth', JSON.stringify({ host, sid, username })).catch(() => {});
+    SecureStore.setItemAsync('auth', JSON.stringify({ host, sid, username })).catch((err) => {
+      console.error('[authStore] Failed to persist auth to SecureStore:', err);
+    });
   },
   clearAuth: () => {
     set({ host: '', sid: '', username: '' });
-    SecureStore.deleteItemAsync('auth').catch(() => {});
+    SecureStore.deleteItemAsync('auth').catch((err) => {
+      console.error('[authStore] Failed to clear auth from SecureStore:', err);
+    });
   },
 }));
