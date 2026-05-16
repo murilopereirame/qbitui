@@ -59,12 +59,27 @@ export class QBitAPI {
     const form = new FormData();
     form.append('urls', urls.join('\n'));
     this.applyOptions(form, options);
+    await this.submitTorrentsForm(form);
+  }
+
+  async addTorrentFile(
+    fileUri: string,
+    fileName: string,
+    options: AddTorrentOptions = {}
+  ): Promise<void> {
+    const form = new FormData();
+    form.append('torrents', { uri: fileUri, name: fileName, type: 'application/x-bittorrent' } as unknown as Blob);
+    this.applyOptions(form, options);
+    await this.submitTorrentsForm(form);
+  }
+
+  private async submitTorrentsForm(form: FormData): Promise<void> {
     const res = await fetch(this.url('/api/v2/torrents/add'), {
       method: 'POST',
       headers: this.headers,
       body: form,
     });
-    if (!res.ok) throw new Error('Failed to add magnet link');
+    if (!res.ok) throw new Error('Failed to add torrent');
     const text = await res.text();
     if (text !== 'Ok.') throw new Error(`qBittorrent error: ${text}`);
   }

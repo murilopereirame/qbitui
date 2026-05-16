@@ -122,9 +122,16 @@ export function useAddTorrent() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ urls, options }: { urls: string[]; options: AddTorrentOptions }) => {
+    mutationFn: async (
+      payload:
+        | { type: 'magnet'; urls: string[]; options: AddTorrentOptions }
+        | { type: 'file'; fileUri: string; fileName: string; options: AddTorrentOptions }
+    ) => {
       if (!api) throw new Error('Not connected');
-      return api.addMagnet(urls, options);
+      if (payload.type === 'magnet') {
+        return api.addMagnet(payload.urls, payload.options);
+      }
+      return api.addTorrentFile(payload.fileUri, payload.fileName, payload.options);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['torrents'] });

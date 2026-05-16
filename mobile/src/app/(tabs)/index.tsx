@@ -1,3 +1,4 @@
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -21,10 +22,10 @@ import { useUIStore } from '@/store';
 
 const FILTERS: { key: TorrentFilter; label: string }[] = [
   { key: 'all', label: 'All' },
-  { key: 'downloading', label: 'DL' },
-  { key: 'seeding', label: 'Seed' },
+  { key: 'downloading', label: 'Downloading' },
+  { key: 'seeding', label: 'Uploading' },
   { key: 'paused', label: 'Paused' },
-  { key: 'completed', label: 'Done' },
+  { key: 'completed', label: 'Completed' },
   { key: 'error', label: 'Error' },
 ];
 
@@ -184,19 +185,22 @@ export default function TorrentsScreen() {
                   <Text style={styles.metaText}>ETA {formatETA(t.eta)}</Text>
                 </View>
 
-                {/* Actions */}
                 <View style={styles.torrentActions}>
                   <Pressable
                     style={styles.actionBtn}
                     onPress={() =>
                       doAction({ action: isPaused ? 'resume' : 'pause', hashes: [t.hash] })
                     }>
-                    <Text style={styles.actionBtnText}>{isPaused ? '▶' : '⏸'}</Text>
+                    <MaterialIcons
+                      name={isPaused ? 'play-arrow' : 'pause'}
+                      size={20}
+                      color="#e2e8f0"
+                    />
                   </Pressable>
                   <Pressable
                     style={[styles.actionBtn, styles.actionBtnDanger]}
                     onPress={() => confirmDelete(t.hash, t.name)}>
-                    <Text style={styles.actionBtnText}>🗑</Text>
+                    <MaterialIcons name="delete" size={20} color="#fca5a5" />
                   </Pressable>
                 </View>
               </Pressable>
@@ -234,7 +238,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
   },
-  filterRow: { paddingHorizontal: 12, paddingBottom: 8, gap: 8 },
+  filterRow: { paddingHorizontal: 12, paddingVertical: 8, gap: 8, alignItems: 'center' },
   filterChip: {
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -306,7 +310,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   actionBtnDanger: { backgroundColor: '#450a0a' },
-  actionBtnText: { fontSize: 16 },
 });

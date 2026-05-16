@@ -29,11 +29,12 @@ function AuthGuard() {
   useEffect(() => {
     if (isLoading) return;
 
-    const inTabsGroup = segments[0] === '(tabs)';
+    const inAuthGroup = segments[0] === 'login';
+    const inProtectedGroup = segments[0] === '(tabs)' || segments[0] === 'torrent';
 
-    if (!credentials && inTabsGroup) {
+    if (!credentials && inProtectedGroup) {
       router.replace('/login');
-    } else if (credentials && !inTabsGroup) {
+    } else if (credentials && inAuthGroup) {
       router.replace('/(tabs)');
     }
   }, [credentials, isLoading, segments, router]);
