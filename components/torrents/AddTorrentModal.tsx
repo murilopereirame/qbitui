@@ -15,7 +15,11 @@ import { Upload, Link, X, AlertCircle, Loader2, FileText } from "lucide-react";
 import { toast } from "sonner";
 
 export function AddTorrentModal() {
-  const { isAddModalOpen, setAddModalOpen } = useUIStore();
+  const {
+    isAddModalOpen, setAddModalOpen,
+    pendingMagnet, setPendingMagnet,
+    pendingTorrentFile, setPendingTorrentFile,
+  } = useUIStore();
   const { addMagnet, addFile } = useAddTorrent();
 
   const [activeTab, setActiveTab] = useState<"magnet" | "file">("magnet");
@@ -28,10 +32,6 @@ export function AddTorrentModal() {
   const [dragOver, setDragOver] = useState(false);
   const [magnetError, setMagnetError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  // Track IDs of events already handled via real-time IPC so the drain effect
-  // doesn't re-process them when the component remounts.
-  const handledUrlRef = useRef<string | null>(null);
-  const handledFileRef = useRef<string | null>(null);
 
   const openPendingFile = useCallback((pending: { name: string; data: string }) => {
     try {
@@ -43,52 +43,31 @@ export function AddTorrentModal() {
         return existing.has(file.name) ? prev : [...prev, file];
       });
       setActiveTab("file");
-      setAddModalOpen(true);
     } catch {
       toast.error(`Failed to open torrent file: ${pending.name}`);
     }
-  }, [setAddModalOpen]);
+  }, []);
 
-  // On mount: drain any pending open-file / open-url that arrived before this
-  // component was mounted (e.g. cold-start or user was on login/settings page).
-  // Skip events already handled by the real-time IPC handler.
+  // Consume a pending magnet URL stored by ElectronProtocolHandler.
   useEffect(() => {
-    if (!window.qbitui) return;
+    if (!pendingMagnet) return;
+    const mag = pendingMagnet;
     void (async () => {
-      const pendingUrl = await window.qbitui!.consumePendingOpenUrl();
-      if (pendingUrl?.startsWith("magnet:") && pendingUrl !== handledUrlRef.current) {
-        setMagnetText(pendingUrl);
-        setActiveTab("magnet");
-        setAddModalOpen(true);
-      }
-      const pendingFile = await window.qbitui!.consumePendingOpenFile();
-      if (pendingFile && pendingFile.name !== handledFileRef.current) {
-        openPendingFile(pendingFile);
-      }
+      setMagnetText(mag);
+      setActiveTab("magnet");
+      setPendingMagnet(null);
     })();
-  }, [openPendingFile, setAddModalOpen]);
+  }, [pendingMagnet, setPendingMagnet]);
 
-  // Real-time IPC events (app already open, modal already mounted).
+  // Consume a pending .torrent file stored by ElectronProtocolHandler.
   useEffect(() => {
-    const unsubUrl = window.qbitui?.onOpenUrl((url) => {
-      if (url.startsWith("magnet:")) {
-        handledUrlRef.current = url; // mark as handled so drain skips it
-        setMagnetText(url);
-        setActiveTab("magnet");
-        setAddModalOpen(true);
-      }
-    });
-
-    const unsubFile = window.qbitui?.onOpenFile((pending) => {
-      handledFileRef.current = pending.name; // mark as handled so drain skips it
-      openPendingFile(pending);
-    });
-
-    return () => {
-      unsubUrl?.();
-      unsubFile?.();
-    };
-  }, [openPendingFile, setAddModalOpen]);
+    if (!pendingTorrentFile) return;
+    const file = pendingTorrentFile;
+    void (async () => {
+      openPendingFile(file);
+      setPendingTorrentFile(null);
+    })();
+  }, [pendingTorrentFile, openPendingFile, setPendingTorrentFile]);
 
   function reset() {
     setMagnetText("");
