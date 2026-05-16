@@ -28,7 +28,7 @@ export default function LogsPage() {
   // Auto-scroll to bottom only when the user is already at the bottom.
   useEffect(() => {
     if (isScrolledToBottom.current) {
-      bottomRef.current?.scrollIntoView({ behavior: "instant" });
+      bottomRef.current?.scrollIntoView({ behavior: "auto" });
     }
   }, [logs]);
 
