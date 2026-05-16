@@ -41,6 +41,18 @@ export async function POST(req: NextRequest) {
       case "reannounce":
         await api.reannounceTorrents(hashes);
         break;
+      case "topPrio":
+        await api.moveTorrentsTop(hashes);
+        break;
+      case "increasePrio":
+        await api.moveTorrentsUp(hashes);
+        break;
+      case "decreasePrio":
+        await api.moveTorrentsDown(hashes);
+        break;
+      case "bottomPrio":
+        await api.moveTorrentsBottom(hashes);
+        break;
       default:
         return NextResponse.json({ error: "Unknown action" }, { status: 400 });
     }

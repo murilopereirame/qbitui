@@ -7,6 +7,7 @@ interface UIState {
   sortField: SortField;
   sortDirection: SortDirection;
   selectedHashes: Set<string>;
+  activeTorrentHash?: string;
   isAddModalOpen: boolean;
 
   setFilter: (filter: TorrentFilter) => void;
@@ -17,6 +18,7 @@ interface UIState {
   toggleSelection: (hash: string) => void;
   selectAll: (hashes: string[]) => void;
   clearSelection: () => void;
+  setActiveTorrentHash: (hash?: string) => void;
   setAddModalOpen: (open: boolean) => void;
 }
 
@@ -26,6 +28,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   sortField: "added_on",
   sortDirection: "desc",
   selectedHashes: new Set(),
+  activeTorrentHash: undefined,
   isAddModalOpen: false,
 
   setFilter: (filter) => set({ filter, selectedHashes: new Set() }),
@@ -51,5 +54,6 @@ export const useUIStore = create<UIState>((set, get) => ({
   },
   selectAll: (hashes) => set({ selectedHashes: new Set(hashes) }),
   clearSelection: () => set({ selectedHashes: new Set() }),
+  setActiveTorrentHash: (activeTorrentHash) => set({ activeTorrentHash }),
   setAddModalOpen: (open) => set({ isAddModalOpen: open }),
 }));

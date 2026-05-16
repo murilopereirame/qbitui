@@ -30,9 +30,10 @@ interface TorrentRowProps {
 }
 
 export function TorrentRow({ torrent }: TorrentRowProps) {
-  const { selectedHashes, toggleSelection } = useUIStore();
+  const { selectedHashes, toggleSelection, activeTorrentHash, setActiveTorrentHash } = useUIStore();
   const { mutate: action } = useTorrentAction();
   const isSelected = selectedHashes.has(torrent.hash);
+  const isActive = activeTorrentHash === torrent.hash;
 
   function doAction(act: Parameters<typeof action>[0]["action"], deleteFiles?: boolean) {
     action(
@@ -49,14 +50,16 @@ export function TorrentRow({ torrent }: TorrentRowProps) {
     <tr
       className={cn(
         "group border-b border-white/5 hover:bg-white/3 transition-colors",
-        isSelected && "bg-blue-600/10"
+        (isSelected || isActive) && "bg-blue-600/10"
       )}
+      onClick={() => setActiveTorrentHash(torrent.hash)}
     >
       {/* Checkbox */}
       <td className="pl-3 pr-1 py-2 w-8">
         <Checkbox
           checked={isSelected}
           onCheckedChange={() => toggleSelection(torrent.hash)}
+          onClick={(e) => e.stopPropagation()}
         />
       </td>
 
@@ -127,7 +130,10 @@ export function TorrentRow({ torrent }: TorrentRowProps) {
       <td className="px-2 py-2 w-10">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/10 cursor-pointer">
+            <button
+              className="p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/10 cursor-pointer"
+              onClick={(e) => e.stopPropagation()}
+            >
               <MoreHorizontal className="h-4 w-4 text-gray-400" />
             </button>
           </DropdownMenuTrigger>

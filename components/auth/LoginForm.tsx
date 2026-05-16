@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,26 +15,64 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const attemptedAutoLogin = useRef(false);
+
+  async function login(hostValue: string, usernameValue: string, passwordValue: string, persist = true) {
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ host: hostValue, username: usernameValue, password: passwordValue }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error ?? "Login failed");
+    }
+    if (persist) {
+      await window.qbitui?.setCredentials({ host: hostValue, username: usernameValue, password: passwordValue });
+    }
+    router.push("/dashboard");
+    router.refresh();
+  }
+
+  useEffect(() => {
+    if (attemptedAutoLogin.current) return;
+    attemptedAutoLogin.current = true;
+
+    let cancelled = false;
+    async function tryAutoLogin() {
+      const creds = await window.qbitui?.getCredentials();
+      if (!creds || cancelled) return;
+      setHost(creds.host);
+      setUsername(creds.username);
+      setPassword(creds.password);
+      setLoading(true);
+      try {
+        await login(creds.host, creds.username, creds.password, false);
+      } catch {
+        if (!cancelled) {
+          setError("Saved login failed. Please sign in again.");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void tryAutoLogin();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ host, username, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "Login failed");
-      } else {
-        router.push("/dashboard");
-        router.refresh();
-      }
-    } catch {
-      setError("Network error — check your connection");
+      await login(host, username, password);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Network error — check your connection");
     } finally {
       setLoading(false);
     }

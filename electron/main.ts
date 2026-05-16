@@ -1,8 +1,9 @@
-import { app, BrowserWindow, shell } from "electron";
+import { app, BrowserWindow, shell, ipcMain, safeStorage } from "electron";
 import { utilityProcess, UtilityProcess } from "electron";
 import path from "path";
 import http from "http";
 import crypto from "crypto";
+import fs from "fs";
 
 // True when launched via `electron .` (development), false when packaged.
 const isDev = !app.isPackaged;
@@ -14,6 +15,12 @@ const SESSION_SECRET = crypto.randomBytes(32).toString("hex");
 
 let mainWindow: BrowserWindow | null = null;
 let serverProcess: UtilityProcess | null = null;
+
+interface SavedCredentials {
+  host: string;
+  username: string;
+  password: string;
+}
 
 // ---------------------------------------------------------------------------
 // Path helpers
@@ -33,6 +40,46 @@ function getServerScriptPath(): string {
     "standalone",
     "server.js"
   );
+}
+
+function getCredentialsPath(): string {
+  return path.join(app.getPath("userData"), "credentials.bin");
+}
+
+function readCredentials(): SavedCredentials | null {
+  try {
+    if (!safeStorage.isEncryptionAvailable()) return null;
+    const file = getCredentialsPath();
+    if (!fs.existsSync(file)) return null;
+    const encrypted = Buffer.from(fs.readFileSync(file, "utf8"), "base64");
+    const decrypted = safeStorage.decryptString(encrypted);
+    const parsed = JSON.parse(decrypted) as SavedCredentials;
+    if (!parsed.host || !parsed.username || !parsed.password) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeCredentials(credentials: SavedCredentials): boolean {
+  try {
+    if (!safeStorage.isEncryptionAvailable()) return false;
+    const payload = JSON.stringify(credentials);
+    const encrypted = safeStorage.encryptString(payload);
+    fs.writeFileSync(getCredentialsPath(), encrypted.toString("base64"), "utf8");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function clearCredentials(): void {
+  try {
+    const file = getCredentialsPath();
+    if (fs.existsSync(file)) fs.unlinkSync(file);
+  } catch {
+    // ignore
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -147,6 +194,19 @@ function createWindow(): void {
 // ---------------------------------------------------------------------------
 
 app.whenReady().then(async () => {
+  ipcMain.handle("credentials:get", () => {
+    return readCredentials();
+  });
+
+  ipcMain.handle("credentials:set", (_event, credentials: SavedCredentials) => {
+    return writeCredentials(credentials);
+  });
+
+  ipcMain.handle("credentials:clear", () => {
+    clearCredentials();
+    return true;
+  });
+
   if (!isDev) {
     try {
       await startEmbeddedServer();

@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { SortField } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { ChevronUp, ChevronDown, Loader2, Play, Pause, Trash2 } from "lucide-react";
+import { ChevronUp, ChevronDown, Loader2, Play, Pause, Trash2, ChevronsUp, ChevronsDown, ArrowUp, ArrowDown } from "lucide-react";
 import { toast } from "sonner";
 
 const COLUMNS: { label: string; field?: SortField; className?: string }[] = [
@@ -40,7 +40,7 @@ export function TorrentTable() {
     }
   }
 
-  function bulkAction(act: "pause" | "resume" | "delete") {
+  function bulkAction(act: "pause" | "resume" | "delete" | "topPrio" | "increasePrio" | "decreasePrio" | "bottomPrio") {
     const hashes = Array.from(selectedHashes);
     action(
       { action: act, hashes, deleteFiles: act === "delete" ? false : undefined },
@@ -76,6 +76,18 @@ export function TorrentTable() {
           </Button>
           <Button size="sm" variant="secondary" onClick={() => bulkAction("pause")} className="gap-1.5">
             <Pause className="h-3.5 w-3.5" /> Pause
+          </Button>
+          <Button size="sm" variant="secondary" onClick={() => bulkAction("topPrio")} className="gap-1.5">
+            <ChevronsUp className="h-3.5 w-3.5" /> Top
+          </Button>
+          <Button size="sm" variant="secondary" onClick={() => bulkAction("increasePrio")} className="gap-1.5">
+            <ArrowUp className="h-3.5 w-3.5" /> Up
+          </Button>
+          <Button size="sm" variant="secondary" onClick={() => bulkAction("decreasePrio")} className="gap-1.5">
+            <ArrowDown className="h-3.5 w-3.5" /> Down
+          </Button>
+          <Button size="sm" variant="secondary" onClick={() => bulkAction("bottomPrio")} className="gap-1.5">
+            <ChevronsDown className="h-3.5 w-3.5" /> Bottom
           </Button>
           <Button size="sm" variant="destructive" onClick={() => bulkAction("delete")} className="gap-1.5">
             <Trash2 className="h-3.5 w-3.5" /> Delete

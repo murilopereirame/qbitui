@@ -1,4 +1,12 @@
-import { Torrent, TransferInfo, AddTorrentOptions } from "./types";
+import {
+  Torrent,
+  TransferInfo,
+  AddTorrentOptions,
+  TorrentProperties,
+  TorrentTracker,
+  TorrentPeer,
+  TorrentFile,
+} from "./types";
 
 export class QBitAPI {
   private readonly safeHost: string;
@@ -137,6 +145,64 @@ export class QBitAPI {
     await this.torrentAction("/api/v2/torrents/reannounce", hashes);
   }
 
+  async moveTorrentsTop(hashes: string[]): Promise<void> {
+    await this.torrentAction("/api/v2/torrents/topPrio", hashes);
+  }
+
+  async moveTorrentsUp(hashes: string[]): Promise<void> {
+    await this.torrentAction("/api/v2/torrents/increasePrio", hashes);
+  }
+
+  async moveTorrentsDown(hashes: string[]): Promise<void> {
+    await this.torrentAction("/api/v2/torrents/decreasePrio", hashes);
+  }
+
+  async moveTorrentsBottom(hashes: string[]): Promise<void> {
+    await this.torrentAction("/api/v2/torrents/bottomPrio", hashes);
+  }
+
+  async getTorrentProperties(hash: string): Promise<TorrentProperties> {
+    const params = new URLSearchParams({ hash });
+    return this.fetchJson<TorrentProperties>(`/api/v2/torrents/properties?${params}`);
+  }
+
+  async getTorrentTrackers(hash: string): Promise<TorrentTracker[]> {
+    const params = new URLSearchParams({ hash });
+    return this.fetchJson<TorrentTracker[]>(`/api/v2/torrents/trackers?${params}`);
+  }
+
+  async getTorrentPeers(hash: string): Promise<TorrentPeer[]> {
+    const params = new URLSearchParams({ hash });
+    const data = await this.fetchJson<{ peers: Record<string, TorrentPeer> }>(`/api/v2/sync/torrentPeers?${params}`);
+    return Object.values(data.peers ?? {});
+  }
+
+  async getTorrentWebSeeds(hash: string): Promise<string[]> {
+    const params = new URLSearchParams({ hash });
+    const data = await this.fetchJson<Array<{ url?: string } | string>>(`/api/v2/torrents/webseeds?${params}`);
+    return data
+      .map((seed) => (typeof seed === "string" ? seed : seed.url ?? ""))
+      .filter(Boolean);
+  }
+
+  async getTorrentFiles(hash: string): Promise<TorrentFile[]> {
+    const params = new URLSearchParams({ hash });
+    return this.fetchJson<TorrentFile[]>(`/api/v2/torrents/files?${params}`);
+  }
+
+  async setFilePriority(hash: string, fileIds: number[], priority: number): Promise<void> {
+    const form = new FormData();
+    form.append("hash", hash);
+    form.append("id", fileIds.join("|"));
+    form.append("priority", String(priority));
+    const res = await fetch(this.url("/api/v2/torrents/filePrio"), {
+      method: "POST",
+      headers: this.headers,
+      body: form,
+    });
+    if (!res.ok) throw new Error(`Failed to change file priority: ${res.status}`);
+  }
+
   private async torrentAction(path: string, hashes: string[]): Promise<void> {
     const form = new FormData();
     form.append("hashes", hashes.join("|"));
@@ -146,6 +212,14 @@ export class QBitAPI {
       body: form,
     });
     if (!res.ok) throw new Error(`Action failed: ${res.status}`);
+  }
+
+  private async fetchJson<T>(path: string): Promise<T> {
+    const res = await fetch(this.url(path), {
+      headers: this.headers,
+    });
+    if (!res.ok) throw new Error(`Failed to fetch ${path}: ${res.status}`);
+    return res.json() as Promise<T>;
   }
 }
 

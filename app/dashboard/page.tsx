@@ -2,6 +2,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { TopBar } from "@/components/layout/TopBar";
 import { TorrentTable } from "@/components/torrents/TorrentTable";
 import { AddTorrentModal } from "@/components/torrents/AddTorrentModal";
+import { TorrentDetailsPanel } from "@/components/torrents/TorrentDetailsPanel";
 
 export default function DashboardPage() {
   return (
@@ -9,8 +10,9 @@ export default function DashboardPage() {
       <Sidebar />
       <div className="flex flex-col flex-1 overflow-hidden">
         <TopBar />
-        <main className="flex-1 overflow-hidden">
+        <main className="flex-1 overflow-hidden flex flex-col">
           <TorrentTable />
+          <TorrentDetailsPanel />
         </main>
       </div>
       <AddTorrentModal />
