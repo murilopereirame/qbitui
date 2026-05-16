@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTorrents } from "@/hooks/useTorrents";
 import { useTorrentDetails, useSetTorrentFilePriority } from "@/hooks/useTorrentDetails";
 import { useUIStore } from "@/store";
-import { formatBytes, formatDate, formatETA, formatRatio, formatSpeed } from "@/lib/utils";
+import { calculateUploadedDownloadedRatio, formatBytes, formatDate, formatETA, formatRatio, formatSpeed } from "@/lib/utils";
 import { TorrentFile } from "@/lib/types";
 import { toast } from "sonner";
 
@@ -26,7 +26,19 @@ type TreeNode = {
 };
 
 function buildFileTree(files: TorrentFile[]): TreeNode[] {
-  type InternalNode = Omit<TreeNode, "depth" | "priority"> & { depth: number; priorities: Set<number> };
+  type InternalNode = {
+    key: string;
+    name: string;
+    depth: number;
+    isDir: boolean;
+    fileIds: number[];
+    size: number;
+    progress: number;
+    remaining: number;
+    availability: number;
+    priorities: Set<number>;
+    children: InternalNode[];
+  };
   const roots = new Map<string, InternalNode>();
 
   function getOrCreateChild(map: Map<string, InternalNode>, key: string, name: string, depth: number, isDir: boolean) {
@@ -136,6 +148,19 @@ function PrioritySelect({
   );
 }
 
+const selectedNodeKeySeparator = ":";
+
+function makeSelectedFileKey(nodeKey: string, fileId: number): string {
+  return `${nodeKey}${selectedNodeKeySeparator}${fileId}`;
+}
+
+function parseSelectedFileKey(key: string): number | null {
+  const idx = key.lastIndexOf(selectedNodeKeySeparator);
+  if (idx < 0 || idx === key.length - 1) return null;
+  const fileId = Number(key.slice(idx + 1));
+  return Number.isFinite(fileId) ? fileId : null;
+}
+
 export function TorrentDetailsPanel() {
   const { activeTorrentHash } = useUIStore();
   const { data: torrents } = useTorrents();
@@ -154,7 +179,7 @@ export function TorrentDetailsPanel() {
     const next = new Set(selectedNodes);
     const selected = next.has(node.key);
     for (const id of node.fileIds) {
-      const key = `${node.key}:${id}`;
+      const key = makeSelectedFileKey(node.key, id);
       if (selected) next.delete(key);
       else next.add(key);
     }
@@ -166,8 +191,8 @@ export function TorrentDetailsPanel() {
   function selectedFileIds() {
     const ids = new Set<number>();
     for (const entry of selectedNodes) {
-      const parts = entry.split(":");
-      if (parts.length === 2) ids.add(Number(parts[1]));
+      const fileId = parseSelectedFileKey(entry);
+      if (fileId !== null) ids.add(fileId);
     }
     return [...ids];
   }
@@ -336,7 +361,7 @@ export function TorrentDetailsPanel() {
                   <td className="py-1 text-right">{formatSpeed(peer.up_speed)}</td>
                   <td className="py-1 text-right">{formatBytes(peer.downloaded)}</td>
                   <td className="py-1 text-right">{formatBytes(peer.uploaded)}</td>
-                  <td className="py-1 text-right">{formatRatio(peer.uploaded > 0 ? peer.uploaded / Math.max(peer.downloaded, 1) : 0)}</td>
+                  <td className="py-1 text-right">{formatRatio(calculateUploadedDownloadedRatio(peer.uploaded, peer.downloaded))}</td>
                   <td className="py-1 truncate max-w-[10rem]" title={peer.files}>{peer.files || "—"}</td>
                 </tr>
               ))}

@@ -18,7 +18,7 @@ export function useTorrentDetails(hash?: string) {
     queryFn: () => fetchTorrentDetails(hash as string),
     enabled: Boolean(hash),
     refetchInterval: 5000,
-    staleTime: 2000,
+    staleTime: 5000,
   });
 }
 

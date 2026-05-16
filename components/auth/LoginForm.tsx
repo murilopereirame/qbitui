@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,7 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false);
   const attemptedAutoLogin = useRef(false);
 
-  async function login(hostValue: string, usernameValue: string, passwordValue: string, persist = true) {
+  const login = useCallback(async (hostValue: string, usernameValue: string, passwordValue: string, persist = true) => {
     const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -32,7 +32,7 @@ export function LoginForm() {
     }
     router.push("/dashboard");
     router.refresh();
-  }
+  }, [router]);
 
   useEffect(() => {
     if (attemptedAutoLogin.current) return;
@@ -63,7 +63,7 @@ export function LoginForm() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [login]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

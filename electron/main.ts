@@ -73,12 +73,14 @@ function writeCredentials(credentials: SavedCredentials): boolean {
   }
 }
 
-function clearCredentials(): void {
+function clearCredentials(): boolean {
   try {
     const file = getCredentialsPath();
     if (fs.existsSync(file)) fs.unlinkSync(file);
-  } catch {
-    // ignore
+    return true;
+  } catch (error) {
+    console.error("Failed to clear saved credentials:", error);
+    return false;
   }
 }
 
@@ -203,8 +205,7 @@ app.whenReady().then(async () => {
   });
 
   ipcMain.handle("credentials:clear", () => {
-    clearCredentials();
-    return true;
+    return clearCredentials();
   });
 
   if (!isDev) {

@@ -38,6 +38,11 @@ export function formatRatio(ratio: number): string {
   return ratio.toFixed(2);
 }
 
+export function calculateUploadedDownloadedRatio(uploaded: number, downloaded: number): number {
+  if (downloaded <= 0) return uploaded > 0 ? 999 : 0;
+  return uploaded / downloaded;
+}
+
 export function formatDate(timestamp: number): string {
   if (!timestamp || timestamp < 0) return "—";
   return new Date(timestamp * 1000).toLocaleDateString();
