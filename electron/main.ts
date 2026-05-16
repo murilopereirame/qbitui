@@ -9,6 +9,20 @@ import { execFileSync } from "child_process";
 // True when launched via `electron .` (development), false when packaged.
 const isDev = !app.isPackaged;
 
+// ---------------------------------------------------------------------------
+// Single-instance lock
+// Ensures only one copy of the app ever runs.  When Windows/Linux launch a
+// second instance for a file-association or protocol open, we forward the
+// argv to the first instance via the `second-instance` event then quit
+// immediately.  Without this the second instance would hang in the taskbar
+// because its embedded Next.js server cannot bind to a port already occupied
+// by the first instance.
+// ---------------------------------------------------------------------------
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.quit();
+}
+
 const PORT = 3000;
 // Generate a fresh random secret for each app session.
 // iron-session cookies are re-issued on next login if the secret rotates.
@@ -379,6 +393,55 @@ function unregisterTorrentHandler(): boolean {
 // message when the window already exists so an already-open modal reacts
 // immediately without waiting for remount.
 
+/**
+ * Parse a list of command-line arguments (process.argv or the argv forwarded
+ * by a second instance) looking for .torrent file paths and magnet: URLs.
+ * On Windows/Linux the OS passes file-association paths via argv rather than
+ * firing the macOS-only `open-file` / `open-url` events.
+ *
+ * We skip the first entry (the executable) and any flags starting with `-`.
+ */
+function handleArgv(argv: string[]): void {
+  // Skip the executable (argv[0]) and any electron/chromium flags.
+  const args = argv.slice(1).filter((a) => !a.startsWith("-"));
+  for (const arg of args) {
+    if (arg.startsWith("magnet:")) {
+      pendingOpenUrl = arg;
+      if (mainWindow) {
+        mainWindow.webContents.send("open-url", arg);
+        mainWindow.focus();
+      }
+      return;
+    }
+    if (arg.toLowerCase().endsWith(".torrent") && fs.existsSync(arg)) {
+      let fileData: string;
+      try {
+        fileData = fs.readFileSync(arg).toString("base64");
+      } catch {
+        continue;
+      }
+      const payload: PendingFile = { name: path.basename(arg), data: fileData };
+      pendingOpenFile = payload;
+      if (mainWindow) {
+        mainWindow.webContents.send("open-file", payload);
+        mainWindow.focus();
+      }
+      return;
+    }
+  }
+}
+
+// Second-instance: fired in the FIRST (already-running) instance when a
+// second instance tried to start.  argv contains the second instance's
+// command-line arguments — extract any torrent/magnet from there.
+app.on("second-instance", (_event, argv) => {
+  handleArgv(argv);
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  }
+});
+
 app.on("open-url", (event, url) => {
   event.preventDefault();
   pendingOpenUrl = url;
@@ -463,6 +526,14 @@ app.whenReady().then(async () => {
   }
 
   createWindow();
+
+  // Windows / Linux cold-start: when the OS launches the app for a file
+  // association or protocol, the path/URL arrives in process.argv rather than
+  // via the macOS-only open-file / open-url events.  Parse it now so the
+  // pending drain handlers have data ready when the renderer mounts.
+  if (process.platform !== "darwin") {
+    handleArgv(process.argv);
+  }
 
   // macOS: re-open the window when the dock icon is clicked and no windows exist.
   app.on("activate", () => {
