@@ -32,6 +32,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -42,29 +44,32 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install EAS CLI
-        run: npm install --global eas-cli
-
       - name: Install dependencies
         working-directory: mobile
         run: npm install --legacy-peer-deps
 
-      - name: Build Android APK (local EAS build)
+      - name: Generate native Android project
         working-directory: mobile
-        run: eas build --platform android --profile preview --local --non-interactive --output ./build/qbitui.apk
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Make Gradle wrapper executable
+        working-directory: mobile/android
+        run: chmod +x gradlew
+
+      - name: Build Android APK
+        working-directory: mobile/android
+        run: ./gradlew assembleDebug
 
       - name: Upload Android artifact
         uses: actions/upload-artifact@v4
         with:
           name: qbitui-android
           retention-days: 7
-          path: mobile/build/qbitui.apk
+          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: warn
 
   build-ios:
-    name: Build iOS IPA
+    name: Build iOS (simulator)
     runs-on: macos-14
 
     steps:
@@ -75,26 +80,56 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-
-      - name: Install EAS CLI
-        run: npm install --global eas-cli
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
 
       - name: Install dependencies
         working-directory: mobile
         run: npm install --legacy-peer-deps
 
-      - name: Build iOS IPA (local EAS build)
+      - name: Generate native iOS project
         working-directory: mobile
-        run: eas build --platform ios --profile preview --local --non-interactive --output ./build/qbitui.ipa
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: npx expo prebuild --platform ios --no-install
+
+      - name: Install CocoaPods
+        working-directory: mobile/ios
+        run: pod install
+
+      - name: Build iOS app (simulator)
+        working-directory: mobile
+        run: |
+          WORKSPACE=$(find ios -name "*.xcworkspace" | head -1)
+          if [ -z "$WORKSPACE" ]; then
+            echo "Error: no .xcworkspace found after expo prebuild" >&2
+            exit 1
+          fi
+          SCHEME=$(basename "$WORKSPACE" .xcworkspace)
+          xcodebuild \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -derivedDataPath ./build/ios \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Package iOS simulator app
+        run: |
+          APP_PATH=$(find mobile/build/ios -name "*.app" | grep -v "\.xctest" | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "Error: no .app bundle found after xcodebuild" >&2
+            exit 1
+          fi
+          zip -r mobile/build/qbitui-ios-simulator.zip "$APP_PATH" 
 
       - name: Upload iOS artifact
         uses: actions/upload-artifact@v4
         with:
           name: qbitui-ios
           retention-days: 7
-          path: mobile/build/qbitui.ipa
+          path: mobile/build/qbitui-ios-simulator.zip
           if-no-files-found: warn
 
   release:
@@ -116,7 +151,7 @@ jobs:
         with:
           files: |
             artifacts/**/*.apk
-            artifacts/**/*.ipa
+            artifacts/**/*.zip
           generate_release_notes: true
           draft: false
           prerelease: ${{ contains(github.ref, '-beta') || contains(github.ref, '-alpha') || contains(github.ref, '-rc') }}
