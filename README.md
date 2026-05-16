@@ -6,7 +6,10 @@ A modern, production-ready web interface for qBittorrent built with Next.js, Tai
 
 - 🖥️ **Desktop app** — native Electron packaging for macOS (`.dmg`), Windows (`.exe`), and Linux (`.AppImage` / `.deb`)
 - 🔐 **Secure authentication** — cookie-based session management with iron-session
+- 🔑 **Desktop credential persistence** — encrypted credential storage in Electron for automatic re-login
 - 📋 **Torrent management** — add, pause, resume, delete, recheck, reannounce
+- ↕️ **Queue ordering controls** — move torrents top/up/down/bottom
+- 🧩 **Torrent detail tabs** — transfer stats, information, trackers, peers, HTTP sources, and content priorities
 - 🔗 **Magnet links** — paste one or multiple magnet links at once
 - 📁 **Torrent file upload** — drag-and-drop `.torrent` file upload with multi-file support
 - 📊 **Live updates** — 2-second polling for real-time progress, speeds, and state
@@ -202,7 +205,9 @@ in an encrypted httpOnly cookie that is inaccessible to JavaScript.
 | `/api/auth/me` | GET | Check authentication status |
 | `/api/torrents` | GET | List torrents (with filter support) |
 | `/api/torrents` | POST | Add magnet link or torrent file |
-| `/api/torrents/action` | POST | Perform action (pause/resume/delete/recheck/reannounce) |
+| `/api/torrents/action` | POST | Perform action (pause/resume/delete/recheck/reannounce/top/up/down/bottom) |
+| `/api/torrents/details` | GET | Get detailed torrent data (properties/trackers/peers/web seeds/files) |
+| `/api/torrents/file-priority` | POST | Change torrent file priority in batch |
 | `/api/transfer` | GET | Global transfer info (speeds) |
 
 ## Project Structure

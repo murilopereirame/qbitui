@@ -1,3 +1,38 @@
-// Preload script — intentionally empty.
-// contextBridge helpers can be added here if the renderer ever needs
-// direct access to Node/Electron APIs.
+import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
+
+interface SavedCredentials {
+  host: string;
+  username: string;
+  password: string;
+}
+
+interface PendingFile {
+  name: string;
+  data: string; // base64
+}
+
+const api = {
+  getCredentials: () => ipcRenderer.invoke("credentials:get") as Promise<SavedCredentials | null>,
+  setCredentials: (credentials: SavedCredentials) => ipcRenderer.invoke("credentials:set", credentials) as Promise<boolean>,
+  clearCredentials: () => ipcRenderer.invoke("credentials:clear") as Promise<boolean>,
+  getLogs: () => ipcRenderer.invoke("logs:get") as Promise<string[]>,
+  getMagnetHandlerStatus: () => ipcRenderer.invoke("handlers:magnet:status") as Promise<boolean>,
+  setMagnetHandler: (enable: boolean) => ipcRenderer.invoke("handlers:magnet:set", enable) as Promise<boolean>,
+  getTorrentHandlerStatus: () => ipcRenderer.invoke("handlers:torrent:status") as Promise<boolean>,
+  setTorrentHandler: (enable: boolean) => ipcRenderer.invoke("handlers:torrent:set", enable) as Promise<boolean>,
+  consumePendingOpenUrl: () => ipcRenderer.invoke("pending:open-url:consume") as Promise<string | null>,
+  consumePendingOpenFile: () => ipcRenderer.invoke("pending:open-file:consume") as Promise<PendingFile | null>,
+  onOpenUrl: (callback: (url: string) => void) => {
+    const handler = (_event: IpcRendererEvent, url: string) => callback(url);
+    ipcRenderer.on("open-url", handler);
+    return () => ipcRenderer.removeListener("open-url", handler);
+  },
+  onOpenFile: (callback: (file: PendingFile) => void) => {
+    const handler = (_event: IpcRendererEvent, file: PendingFile) => callback(file);
+    ipcRenderer.on("open-file", handler);
+    return () => ipcRenderer.removeListener("open-file", handler);
+  },
+};
+
+contextBridge.exposeInMainWorld("qbitui", api);
+

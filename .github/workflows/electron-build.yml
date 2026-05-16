@@ -52,7 +52,8 @@ jobs:
         run: npx electron-builder ${{ matrix.platform_flag }} --publish=never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Disable macOS code signing in CI (no cert available)
+          # Disable macOS certificate auto-discovery; ad-hoc signing is applied
+          # by the afterPack hook (electron/afterpack.cjs) instead.
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
       - name: Upload artifacts

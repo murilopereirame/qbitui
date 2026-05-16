@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -15,9 +15,14 @@ import { Upload, Link, X, AlertCircle, Loader2, FileText } from "lucide-react";
 import { toast } from "sonner";
 
 export function AddTorrentModal() {
-  const { isAddModalOpen, setAddModalOpen } = useUIStore();
+  const {
+    isAddModalOpen, setAddModalOpen,
+    pendingMagnet, setPendingMagnet,
+    pendingTorrentFile, setPendingTorrentFile,
+  } = useUIStore();
   const { addMagnet, addFile } = useAddTorrent();
 
+  const [activeTab, setActiveTab] = useState<"magnet" | "file">("magnet");
   const [magnetText, setMagnetText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [savepath, setSavepath] = useState("");
@@ -27,6 +32,42 @@ export function AddTorrentModal() {
   const [dragOver, setDragOver] = useState(false);
   const [magnetError, setMagnetError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const openPendingFile = useCallback((pending: { name: string; data: string }) => {
+    try {
+      const bytes = Uint8Array.from(atob(pending.data), (c) => c.charCodeAt(0));
+      const blob = new Blob([bytes], { type: "application/x-bittorrent" });
+      const file = new File([blob], pending.name, { type: "application/x-bittorrent" });
+      setFiles((prev) => {
+        const existing = new Set(prev.map((f) => f.name));
+        return existing.has(file.name) ? prev : [...prev, file];
+      });
+      setActiveTab("file");
+    } catch {
+      toast.error(`Failed to open torrent file: ${pending.name}`);
+    }
+  }, []);
+
+  // Consume a pending magnet URL stored by ElectronProtocolHandler.
+  useEffect(() => {
+    if (!pendingMagnet) return;
+    const mag = pendingMagnet;
+    void (async () => {
+      setMagnetText(mag);
+      setActiveTab("magnet");
+      setPendingMagnet(null);
+    })();
+  }, [pendingMagnet, setPendingMagnet]);
+
+  // Consume a pending .torrent file stored by ElectronProtocolHandler.
+  useEffect(() => {
+    if (!pendingTorrentFile) return;
+    const file = pendingTorrentFile;
+    void (async () => {
+      openPendingFile(file);
+      setPendingTorrentFile(null);
+    })();
+  }, [pendingTorrentFile, openPendingFile, setPendingTorrentFile]);
 
   function reset() {
     setMagnetText("");
@@ -136,7 +177,7 @@ export function AddTorrentModal() {
           <DialogTitle>Add Torrent</DialogTitle>
         </DialogHeader>
 
-        <Tabs defaultValue="magnet">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "magnet" | "file")}>
           <TabsList className="w-full">
             <TabsTrigger value="magnet" className="flex-1 gap-2">
               <Link className="h-4 w-4" /> Magnet Link

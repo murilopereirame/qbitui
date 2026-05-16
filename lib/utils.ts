@@ -2,6 +2,9 @@ import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { TorrentState } from "./types";
 
+// We use 999 as a pseudo-infinite ratio sentinel and let formatRatio() render it as "∞".
+const INFINITE_RATIO = 999;
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -38,6 +41,11 @@ export function formatRatio(ratio: number): string {
   return ratio.toFixed(2);
 }
 
+export function calculateUploadedDownloadedRatio(uploaded: number, downloaded: number): number {
+  if (downloaded <= 0) return uploaded > 0 ? INFINITE_RATIO : 0;
+  return uploaded / downloaded;
+}
+
 export function formatDate(timestamp: number): string {
   if (!timestamp || timestamp < 0) return "—";
   return new Date(timestamp * 1000).toLocaleDateString();
@@ -49,6 +57,8 @@ export function getStateLabel(state: TorrentState): string {
     uploading: "Seeding",
     pausedDL: "Paused",
     pausedUP: "Paused",
+    stoppedDL: "Stopped",
+    stoppedUP: "Stopped",
     stalledDL: "Stalled",
     stalledUP: "Stalled",
     checkingDL: "Checking",
@@ -78,6 +88,8 @@ export function getStateColor(state: TorrentState): string {
       return "bg-green-500/20 text-green-400 border-green-500/30";
     case "pausedDL":
     case "pausedUP":
+    case "stoppedDL":
+    case "stoppedUP":
       return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30";
     case "stalledDL":
     case "stalledUP":

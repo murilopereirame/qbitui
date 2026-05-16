@@ -44,11 +44,11 @@ export function useTorrents() {
       data = data.filter((t) => {
         switch (filter) {
           case "downloading":
-            return ["downloading", "stalledDL", "metaDL", "forcedDL", "queuedDL", "allocating"].includes(t.state);
+            return ["downloading", "stalledDL", "metaDL", "forcedDL", "queuedDL", "allocating", "pausedDL", "stoppedDL"].includes(t.state);
           case "seeding":
             return ["uploading", "stalledUP", "forcedUP", "queuedUP"].includes(t.state);
           case "paused":
-            return ["pausedDL", "pausedUP"].includes(t.state);
+            return ["pausedDL", "pausedUP", "stoppedDL", "stoppedUP"].includes(t.state);
           case "completed":
             return t.progress === 1 || ["uploading", "stalledUP", "forcedUP", "pausedUP", "queuedUP"].includes(t.state);
           case "error":
@@ -70,9 +70,17 @@ export function useTorrents() {
     }
 
     data = [...data].sort((a, b) => {
+      const dir = sortDirection === "asc" ? 1 : -1;
+
+      // Priority 0 means "no queue position" (unqueued/seeding); always sort last when ascending.
+      if (sortField === "priority") {
+        const aP = a.priority === 0 ? Infinity : a.priority;
+        const bP = b.priority === 0 ? Infinity : b.priority;
+        return (aP - bP) * dir;
+      }
+
       const aVal = a[sortField as keyof Torrent];
       const bVal = b[sortField as keyof Torrent];
-      const dir = sortDirection === "asc" ? 1 : -1;
 
       if (typeof aVal === "string" && typeof bVal === "string") {
         return aVal.localeCompare(bVal) * dir;
