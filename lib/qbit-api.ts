@@ -240,29 +240,71 @@ export async function qbitLogin(
   host: string,
   username: string,
   password: string
-): Promise<string> {
+): Promise<{ sid: string; host: string }> {
   const safeHost = validateHost(host);
   const form = new FormData();
   form.append("username", username);
   form.append("password", password);
 
-  const res = await fetch(`${safeHost}/api/v2/auth/login`, {
-    method: "POST",
-    headers: { Referer: safeHost },
-    body: form,
-  });
+  let lastNetworkError: Error | null = null;
+  for (const candidate of getLoginHostCandidates(safeHost)) {
+    try {
+      const res = await fetch(`${candidate}/api/v2/auth/login`, {
+        method: "POST",
+        headers: { Referer: candidate },
+        body: form,
+        signal: AbortSignal.timeout(10_000),
+      });
 
-  if (!res.ok) {
-    throw new Error(`Login failed: HTTP ${res.status}`);
+      if (!res.ok) {
+        throw new Error(`Login failed: HTTP ${res.status}`);
+      }
+
+      const text = await res.text();
+      if (text === "Fails.") throw new Error("Invalid username or password");
+      if (text.includes("banned")) throw new Error("IP address is banned");
+      if (text !== "Ok.") throw new Error(`Unexpected login response: ${text}`);
+
+      const setCookie = res.headers.get("set-cookie") ?? "";
+      const sidMatch = setCookie.match(/SID=([^;]+)/);
+      if (!sidMatch) throw new Error("No session cookie received from qBittorrent");
+      return { sid: sidMatch[1], host: candidate };
+    } catch (error) {
+      if (error instanceof Error && isRetriableNetworkError(error)) {
+        lastNetworkError = error;
+        continue;
+      }
+      throw error;
+    }
   }
 
-  const text = await res.text();
-  if (text === "Fails.") throw new Error("Invalid username or password");
-  if (text.includes("banned")) throw new Error("IP address is banned");
-  if (text !== "Ok.") throw new Error(`Unexpected login response: ${text}`);
+  throw new Error(
+    lastNetworkError
+      ? `Could not reach qBittorrent WebUI at ${safeHost}: ${lastNetworkError.message}`
+      : `Could not reach qBittorrent WebUI at ${safeHost}`
+  );
+}
 
-  const setCookie = res.headers.get("set-cookie") ?? "";
-  const sidMatch = setCookie.match(/SID=([^;]+)/);
-  if (!sidMatch) throw new Error("No session cookie received from qBittorrent");
-  return sidMatch[1];
+function getLoginHostCandidates(host: string): string[] {
+  const parsed = new URL(host);
+  const normalizedHostname = parsed.hostname.replace(/^\[(.*)\]$/, "$1");
+  const candidates = new Set<string>([parsed.origin]);
+  const hostnames =
+    normalizedHostname === "localhost"
+      ? ["127.0.0.1", "::1"]
+      : normalizedHostname === "127.0.0.1" || normalizedHostname === "::1"
+        ? ["localhost"]
+        : [];
+
+  for (const hostname of hostnames) {
+    const candidate = new URL(parsed.origin);
+    candidate.hostname = hostname;
+    candidates.add(candidate.origin);
+  }
+
+  return [...candidates];
+}
+
+function isRetriableNetworkError(error: Error): boolean {
+  return error.name === "TimeoutError" || error.message === "fetch failed";
 }

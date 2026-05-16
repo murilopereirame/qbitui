@@ -8,8 +8,26 @@ import { useTorrents } from "@/hooks/useTorrents";
 import { useTorrentDetails, useSetTorrentFilePriority } from "@/hooks/useTorrentDetails";
 import { useUIStore } from "@/store";
 import { calculateUploadedDownloadedRatio, formatBytes, formatDate, formatETA, formatRatio, formatSpeed } from "@/lib/utils";
-import { TorrentFile } from "@/lib/types";
+import { TorrentDetailsSection, TorrentFile } from "@/lib/types";
 import { toast } from "sonner";
+
+type TorrentDetailsTab = "transfer" | "info" | "trackers" | "peers" | "http" | "content";
+
+function getSectionsForTab(tab: TorrentDetailsTab): TorrentDetailsSection[] {
+  switch (tab) {
+    case "transfer":
+    case "info":
+      return ["properties"];
+    case "trackers":
+      return ["trackers"];
+    case "peers":
+      return ["peers"];
+    case "http":
+      return ["webSeeds"];
+    case "content":
+      return ["files"];
+  }
+}
 
 type TreeNode = {
   key: string;
@@ -165,7 +183,12 @@ function parseSelectedFileKey(key: string): number | null {
 export function TorrentDetailsPanel() {
   const { activeTorrentHash } = useUIStore();
   const { data: torrents } = useTorrents();
-  const { data, isLoading, isError, error } = useTorrentDetails(activeTorrentHash);
+  const [activeTab, setActiveTab] = useState<TorrentDetailsTab>("transfer");
+  const { data, isLoading, isError, error } = useTorrentDetails(
+    activeTorrentHash,
+    getSectionsForTab(activeTab),
+    activeTab === "content" ? false : 5000
+  );
   const { mutate: setPriority, isPending } = useSetTorrentFilePriority();
   const [selectedNodes, setSelectedNodes] = useState<Set<string>>(new Set());
 
@@ -173,7 +196,10 @@ export function TorrentDetailsPanel() {
     () => torrents?.find((t) => t.hash === activeTorrentHash),
     [torrents, activeTorrentHash]
   );
-  const tree = useMemo(() => buildFileTree(data?.files ?? []), [data?.files]);
+  const tree = useMemo(
+    () => (activeTab === "content" ? buildFileTree(data?.files ?? []) : []),
+    [activeTab, data?.files]
+  );
   const flatNodes = useMemo(() => flatten(tree), [tree]);
 
   function toggleNode(node: TreeNode) {
@@ -228,7 +254,7 @@ export function TorrentDetailsPanel() {
   }
 
   const p = data.properties;
-  const transferRows: Array<[string, string]> = [
+  const transferRows: Array<[string, string]> = p ? [
     ["Time Active", formatETA(p.time_elapsed)],
     ["ETA", formatETA(p.eta)],
     ["Connections", `${p.nb_connections}/${p.nb_connections_limit}`],
@@ -245,9 +271,9 @@ export function TorrentDetailsPanel() {
     ["Reannounce In", formatETA(p.reannounce)],
     ["Last Seen Complete", formatDate(p.last_seen)],
     ["Popularity", p.popularity?.toFixed(2) ?? "—"],
-  ];
+  ] : [];
 
-  const infoRows: Array<[string, string]> = [
+  const infoRows: Array<[string, string]> = p ? [
     ["Total Size", formatBytes(p.total_size)],
     ["Pieces", `${p.pieces_num} (${formatBytes(p.piece_size)})`],
     ["Created By", p.created_by || "—"],
@@ -259,12 +285,12 @@ export function TorrentDetailsPanel() {
     ["Info Hash v2", p.infohash_v2 || "—"],
     ["Save Path", p.save_path || "—"],
     ["Comment", p.comment || "—"],
-  ];
+  ] : [];
 
   return (
     <div className="h-80 border-t border-white/10 px-4 py-3 overflow-hidden">
       <div className="mb-2 text-sm text-white font-medium truncate">{selectedTorrent.name}</div>
-      <Tabs defaultValue="transfer" className="h-full flex flex-col">
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TorrentDetailsTab)} className="h-full flex flex-col">
         <TabsList className="w-full justify-start overflow-x-auto">
           <TabsTrigger value="transfer">Transfer</TabsTrigger>
           <TabsTrigger value="info">Information</TabsTrigger>
@@ -311,7 +337,7 @@ export function TorrentDetailsPanel() {
               </tr>
             </thead>
             <tbody>
-              {data.trackers.map((t) => (
+              {(data.trackers ?? []).map((t) => (
                 <tr key={t.url} className="border-b border-white/5">
                   <td className="py-1">{t.tier}</td>
                   <td className="py-1 truncate max-w-[20rem]" title={t.url}>{t.url}</td>
@@ -347,7 +373,7 @@ export function TorrentDetailsPanel() {
               </tr>
             </thead>
             <tbody>
-              {data.peers.map((peer) => (
+              {(data.peers ?? []).map((peer) => (
                 <tr key={`${peer.ip}:${peer.port}`} className="border-b border-white/5">
                   <td className="py-1">{peer.country || "—"}</td>
                   <td className="py-1">{peer.ip}</td>
@@ -370,10 +396,10 @@ export function TorrentDetailsPanel() {
 
         <TabsContent value="http" className="h-full overflow-auto">
           <ul className="text-sm space-y-1">
-            {data.webSeeds.length === 0 ? (
+            {(data.webSeeds ?? []).length === 0 ? (
               <li className="text-gray-500">No HTTP sources</li>
             ) : (
-              data.webSeeds.map((url) => (
+              (data.webSeeds ?? []).map((url) => (
                 <li key={url} className="truncate" title={url}>{url}</li>
               ))
             )}

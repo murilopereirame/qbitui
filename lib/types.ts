@@ -170,6 +170,10 @@ export interface TorrentDetails {
   files: TorrentFile[];
 }
 
+export type TorrentDetailsSection = "properties" | "trackers" | "peers" | "webSeeds" | "files";
+
+export type PartialTorrentDetails = Partial<TorrentDetails>;
+
 export type SortField =
   | "name"
   | "size"

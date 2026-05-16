@@ -1,10 +1,14 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { TorrentDetails } from "@/lib/types";
+import { PartialTorrentDetails, TorrentDetailsSection } from "@/lib/types";
 
-async function fetchTorrentDetails(hash: string): Promise<TorrentDetails> {
-  const res = await fetch(`/api/torrents/details?hash=${encodeURIComponent(hash)}`);
+async function fetchTorrentDetails(hash: string, sections: TorrentDetailsSection[]): Promise<PartialTorrentDetails> {
+  const params = new URLSearchParams({ hash });
+  for (const section of sections) {
+    params.append("section", section);
+  }
+  const res = await fetch(`/api/torrents/details?${params.toString()}`);
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(data.error ?? "Failed to fetch torrent details");
@@ -12,13 +16,14 @@ async function fetchTorrentDetails(hash: string): Promise<TorrentDetails> {
   return res.json();
 }
 
-export function useTorrentDetails(hash?: string) {
-  return useQuery<TorrentDetails>({
-    queryKey: ["torrent-details", hash],
-    queryFn: () => fetchTorrentDetails(hash as string),
-    enabled: Boolean(hash),
-    refetchInterval: 5000,
-    staleTime: 5000,
+export function useTorrentDetails(hash: string | undefined, sections: TorrentDetailsSection[], refetchInterval: number | false = 5000) {
+  const sectionsKey = sections.join(",");
+  return useQuery<PartialTorrentDetails>({
+    queryKey: ["torrent-details", hash, sectionsKey],
+    queryFn: () => fetchTorrentDetails(hash as string, sections),
+    enabled: Boolean(hash) && sections.length > 0,
+    refetchInterval,
+    staleTime: refetchInterval === false ? Infinity : refetchInterval,
   });
 }
 

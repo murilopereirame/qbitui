@@ -14,11 +14,11 @@ export async function POST(req: NextRequest) {
 
     const normalizedHost = validateHost(host);
 
-    const sid = await qbitLogin(normalizedHost, username, password);
+    const { sid, host: resolvedHost } = await qbitLogin(normalizedHost, username, password);
 
     const cookieStore = await cookies();
     const session = await getIronSession<IronSessionData>(cookieStore, sessionOptions);
-    session.host = normalizedHost;
+    session.host = resolvedHost;
     session.sid = sid;
     session.username = username;
     await session.save();
