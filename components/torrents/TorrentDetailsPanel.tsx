@@ -178,14 +178,12 @@ export function TorrentDetailsPanel() {
 
   function toggleNode(node: TreeNode) {
     const next = new Set(selectedNodes);
-    const selected = next.has(node.key);
+    const allSelected = node.fileIds.every((id) => next.has(makeSelectedFileKey(node.key, id)));
     for (const id of node.fileIds) {
       const key = makeSelectedFileKey(node.key, id);
-      if (selected) next.delete(key);
+      if (allSelected) next.delete(key);
       else next.add(key);
     }
-    if (selected) next.delete(node.key);
-    else next.add(node.key);
     setSelectedNodes(next);
   }
 
@@ -416,11 +414,16 @@ export function TorrentDetailsPanel() {
             </thead>
             <tbody>
               {flatNodes.map((node) => {
-                const checked = selectedNodes.has(node.key);
+                const selectedCount = node.fileIds.filter((id) => selectedNodes.has(makeSelectedFileKey(node.key, id))).length;
+                const checked = selectedCount === node.fileIds.length;
+                const indeterminate = selectedCount > 0 && !checked;
                 return (
                   <tr key={node.key} className="border-b border-white/5">
                     <td className="py-1">
-                      <Checkbox checked={checked} onCheckedChange={() => toggleNode(node)} />
+                      <Checkbox
+                        checked={indeterminate ? "indeterminate" : checked}
+                        onCheckedChange={() => toggleNode(node)}
+                      />
                     </td>
                     <td className="py-1" style={{ paddingLeft: `${node.depth * 14}px` }}>
                       <span className={node.isDir ? "font-medium text-gray-200" : "text-gray-300"}>

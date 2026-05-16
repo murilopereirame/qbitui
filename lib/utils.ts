@@ -2,6 +2,7 @@ import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { TorrentState } from "./types";
 
+// qBittorrent uses very large ratio values to indicate "infinite" ratio behavior.
 const INFINITE_RATIO = 999;
 
 export function cn(...inputs: ClassValue[]) {
