@@ -123,7 +123,7 @@ function buildFileTree(files: TorrentFile[]): TreeNode[] {
         progress: node.size > 0 ? node.progress / node.size : 0,
         remaining: node.remaining,
         availability: node.fileIds.length > 0 ? node.availability / node.fileIds.length : 0,
-        priority: node.priorities.size > 1 ? "mixed" : [...node.priorities][0] ?? 0,
+        priority: node.priorities.size > 1 ? "mixed" : node.priorities.values().next().value ?? 0,
         children: finalize(node.children as InternalNode[]),
       }));
   }
@@ -175,8 +175,8 @@ function makeSelectedFileKey(nodeKey: string, fileId: number): string {
 
 function parseSelectedFileKey(key: string): number | null {
   const idx = key.lastIndexOf(selectedNodeKeySeparator);
-  if (idx < 0 || idx === key.length - 1) return null;
-  const fileId = Number(key.slice(idx + 1));
+  if (idx < 0 || idx + selectedNodeKeySeparator.length >= key.length) return null;
+  const fileId = Number(key.slice(idx + selectedNodeKeySeparator.length));
   return Number.isFinite(fileId) ? fileId : null;
 }
 

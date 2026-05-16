@@ -306,5 +306,5 @@ function getLoginHostCandidates(host: string): string[] {
 }
 
 function isRetriableNetworkError(error: Error): boolean {
-  return error.name === "TimeoutError" || error.message === "fetch failed";
+  return error.name === "TimeoutError" || error.name === "TypeError";
 }
