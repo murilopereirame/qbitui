@@ -1,23 +1,34 @@
 # qbitUI
 
-A modern, production-ready web interface for qBittorrent built with Next.js, TailwindCSS, shadcn/ui — available as a **web app** (Docker / Node.js) and as a native **Electron desktop app** for macOS, Windows, and Linux.
+A modern, production-ready interface for qBittorrent available as a **web app** (Docker / Node.js), a native **Electron desktop app** (macOS, Windows, Linux), and a **React Native mobile app** (Android, iOS, iPad).
+
+## Repository Structure (Monorepo)
+
+```
+packages/
+  core/      # Shared TypeScript: types, QBitAPI client, format utilities
+  mobile/    # React Native / Expo app (Android, iOS, iPad)
+(root)       # Next.js web app + Electron wrapper (unchanged)
+```
 
 ## Features
 
 - 🖥️ **Desktop app** — native Electron packaging for macOS (`.dmg`), Windows (`.exe`), and Linux (`.AppImage` / `.deb`)
-- 🔐 **Secure authentication** — cookie-based session management with iron-session
+- 📱 **Mobile app** — React Native / Expo for Android, iOS (iPhone & iPad)
+- 🔐 **Secure authentication** — cookie-based session (web/Electron) / SecureStore (mobile)
 - 📋 **Torrent management** — add, pause, resume, delete, recheck, reannounce
 - 🔗 **Magnet links** — paste one or multiple magnet links at once
-- 📁 **Torrent file upload** — drag-and-drop `.torrent` file upload with multi-file support
+- 📁 **Torrent file upload** — drag-and-drop `.torrent` upload (web) / file picker (mobile)
 - 📊 **Live updates** — 2-second polling for real-time progress, speeds, and state
 - 🔍 **Filter & search** — filter by state (all/downloading/seeding/paused/completed/error)
 - 📦 **Bulk actions** — select multiple torrents and apply actions in bulk
 - 🌙 **Dark mode** — dark UI by default
-- 📱 **Responsive** — works on desktop and mobile
-- 🛡️ **Proxy layer** — all qBittorrent API calls go through Next.js API routes (no CORS issues, credentials never reach the browser)
+- 🖥↔📱 **iPad split-pane** — persistent sidebar auto-activates on screens ≥ 768 dp wide
+- 🛡️ **Proxy layer** — web/Electron: all qBittorrent API calls go through Next.js routes (no CORS issues); mobile: direct device-to-qBittorrent calls
 
 ## Tech Stack
 
+### Web / Electron
 - **Framework**: Next.js (App Router, `output: standalone`)
 - **Language**: TypeScript
 - **Styling**: TailwindCSS + custom shadcn/ui components
@@ -25,6 +36,16 @@ A modern, production-ready web interface for qBittorrent built with Next.js, Tai
 - **State management**: Zustand
 - **Session storage**: iron-session (encrypted httpOnly cookie)
 - **Notifications**: Sonner
+
+### Mobile (React Native)
+- **Framework**: Expo (~52) with Expo Router (~4)
+- **Language**: TypeScript
+- **Styling**: NativeWind v4 (Tailwind syntax for React Native)
+- **Data fetching**: TanStack Query (2s polling)
+- **State management**: Zustand
+- **Session storage**: expo-secure-store
+- **File picking**: expo-document-picker
+- **Shared logic**: `packages/core` (types, API client, format utilities)
 
 ## Quick Start
 
@@ -130,6 +151,24 @@ attaches all installer files as downloadable assets.
 (`CSC_IDENTITY_AUTO_DISCOVERY=false`). To enable it, add your Developer ID certificate
 as `CSC_LINK` and `CSC_KEY_PASSWORD` repository secrets and remove the override.
 
+## Mobile App (React Native / Expo)
+
+See [`packages/mobile/README.md`](packages/mobile/README.md) for the full mobile setup guide.
+
+**Quick start:**
+```bash
+# Mobile has its own install (React 18 vs root React 19)
+cd packages/mobile
+npm install
+npx expo start                     # scan QR with Expo Go app
+```
+
+**Build for stores:**
+```bash
+eas build --platform android       # Android APK / AAB
+eas build --platform ios           # iOS IPA (requires Apple Developer account)
+```
+
 ## Docker
 
 ### Using docker-compose
@@ -208,6 +247,32 @@ in an encrypted httpOnly cookie that is inaccessible to JavaScript.
 ## Project Structure
 
 ```
+├── packages/
+│   ├── core/                   # Shared: types, QBitAPI client, format utils
+│   │   └── src/
+│   │       ├── api.ts
+│   │       ├── types.ts
+│   │       ├── utils.ts
+│   │       └── index.ts
+│   └── mobile/                 # React Native / Expo app
+│       ├── app/
+│       │   ├── _layout.tsx     # Root layout (providers, session loader)
+│       │   ├── index.tsx       # Auth redirect
+│       │   ├── login.tsx       # Login screen
+│       │   └── (tabs)/
+│       │       ├── _layout.tsx # Tablet split-pane / phone stack
+│       │       └── index.tsx   # Dashboard (torrent list)
+│       ├── components/
+│       │   ├── TorrentItem.tsx
+│       │   ├── AddTorrentModal.tsx
+│       │   └── FilterSheet.tsx
+│       ├── hooks/
+│       │   ├── useSession.ts
+│       │   ├── useTorrents.ts
+│       │   └── useTransfer.ts
+│       ├── store/index.ts
+│       ├── app.json
+│       └── eas.json
 ├── electron/
 │   ├── main.ts                 # Electron main process (embedded server + BrowserWindow)
 │   ├── preload.ts              # Electron preload script
