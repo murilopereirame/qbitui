@@ -1,4 +1,4 @@
-import { TorrentState } from './types';
+import { TorrentFilter, TorrentState } from './types';
 
 export function formatBytes(bytes: number, decimals = 2): string {
   if (bytes === 0) return '0 B';
@@ -9,13 +9,24 @@ export function formatBytes(bytes: number, decimals = 2): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
+export const FILTER_STATES: Record<Exclude<TorrentFilter, 'all'>, TorrentState[]> = {
+  downloading: ['downloading', 'stalledDL', 'metaDL', 'forcedDL', 'queuedDL', 'allocating', 'pausedDL', 'stoppedDL'],
+  seeding: ['uploading', 'stalledUP', 'forcedUP', 'queuedUP'],
+  paused: ['pausedDL', 'pausedUP', 'stoppedDL', 'stoppedUP'],
+  completed: ['uploading', 'stalledUP', 'forcedUP', 'pausedUP', 'queuedUP'],
+  error: ['error', 'missingFiles'],
+};
+
 export function formatSpeed(bytesPerSec: number): string {
   if (bytesPerSec === 0) return '0 B/s';
   return formatBytes(bytesPerSec) + '/s';
 }
 
+/** qBittorrent uses 8640000 (100 days in seconds) as a sentinel for "infinite" ETA. */
+const MAX_ETA_SECONDS = 8640000;
+
 export function formatETA(seconds: number): string {
-  if (seconds < 0 || seconds === 8640000) return '∞';
+  if (seconds < 0 || seconds === MAX_ETA_SECONDS) return '∞';
   if (seconds === 0) return 'Done';
   const d = Math.floor(seconds / 86400);
   const h = Math.floor((seconds % 86400) / 3600);

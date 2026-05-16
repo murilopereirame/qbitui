@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { QBitAPI } from '@/lib/qbit-api';
 import { Torrent, TorrentAction, AddTorrentOptions } from '@/lib/types';
+import { FILTER_STATES } from '@/lib/utils';
 import { useAuthStore, useUIStore } from '@/store';
 
 function useApi(): QBitAPI | null {
@@ -26,21 +27,12 @@ export function useTorrents() {
     let data = query.data ?? [];
 
     if (filter !== 'all') {
+      const states = FILTER_STATES[filter];
       data = data.filter((t) => {
-        switch (filter) {
-          case 'downloading':
-            return ['downloading', 'stalledDL', 'metaDL', 'forcedDL', 'queuedDL', 'allocating', 'pausedDL', 'stoppedDL'].includes(t.state);
-          case 'seeding':
-            return ['uploading', 'stalledUP', 'forcedUP', 'queuedUP'].includes(t.state);
-          case 'paused':
-            return ['pausedDL', 'pausedUP', 'stoppedDL', 'stoppedUP'].includes(t.state);
-          case 'completed':
-            return t.progress === 1 || ['uploading', 'stalledUP', 'forcedUP', 'pausedUP', 'queuedUP'].includes(t.state);
-          case 'error':
-            return ['error', 'missingFiles'].includes(t.state);
-          default:
-            return true;
+        if (filter === 'completed') {
+          return t.progress === 1 || states.includes(t.state);
         }
+        return states.includes(t.state);
       });
     }
 

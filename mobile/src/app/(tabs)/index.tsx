@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useTorrentAction, useTorrents, useTransfer } from '@/hooks/use-qbit';
-import { formatBytes, formatETA, formatSpeed, getStateColor, getStateLabel } from '@/lib/utils';
+import { formatBytes, formatETA, formatSpeed, FILTER_STATES, getStateColor, getStateLabel } from '@/lib/utils';
 import { TorrentFilter } from '@/lib/types';
 import { useUIStore } from '@/store';
 
@@ -154,7 +154,7 @@ export default function TorrentsScreen() {
           renderItem={({ item: t }) => {
             const stateColorKey = getStateColor(t.state);
             const stateColor = STATE_COLORS[stateColorKey] ?? '#6b7280';
-            const isPaused = ['pausedDL', 'pausedUP', 'stoppedDL', 'stoppedUP'].includes(t.state);
+            const isPaused = FILTER_STATES.paused.includes(t.state);
 
             return (
               <Pressable
