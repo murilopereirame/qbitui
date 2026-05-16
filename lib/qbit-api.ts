@@ -118,11 +118,21 @@ export class QBitAPI {
   }
 
   async pauseTorrents(hashes: string[]): Promise<void> {
-    await this.torrentAction("/api/v2/torrents/pause", hashes);
+    // qBittorrent v5 renamed /pause → /stop; try new endpoint first.
+    await this.torrentActionWithFallback(
+      "/api/v2/torrents/stop",
+      "/api/v2/torrents/pause",
+      hashes
+    );
   }
 
   async resumeTorrents(hashes: string[]): Promise<void> {
-    await this.torrentAction("/api/v2/torrents/resume", hashes);
+    // qBittorrent v5 renamed /resume → /start; try new endpoint first.
+    await this.torrentActionWithFallback(
+      "/api/v2/torrents/start",
+      "/api/v2/torrents/resume",
+      hashes
+    );
   }
 
   async deleteTorrents(hashes: string[], deleteFiles: boolean): Promise<void> {
@@ -211,6 +221,31 @@ export class QBitAPI {
       headers: this.headers,
       body: form,
     });
+    if (!res.ok) throw new Error(`Action failed: ${res.status}`);
+  }
+
+  /** Tries `primaryPath` first; if qBittorrent returns 404 falls back to `fallbackPath`. */
+  private async torrentActionWithFallback(primaryPath: string, fallbackPath: string, hashes: string[]): Promise<void> {
+    const buildForm = () => {
+      const form = new FormData();
+      form.append("hashes", hashes.join("|"));
+      return form;
+    };
+
+    let res = await fetch(this.url(primaryPath), {
+      method: "POST",
+      headers: this.headers,
+      body: buildForm(),
+    });
+
+    if (res.status === 404) {
+      res = await fetch(this.url(fallbackPath), {
+        method: "POST",
+        headers: this.headers,
+        body: buildForm(),
+      });
+    }
+
     if (!res.ok) throw new Error(`Action failed: ${res.status}`);
   }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ export function AddTorrentModal() {
   const { isAddModalOpen, setAddModalOpen } = useUIStore();
   const { addMagnet, addFile } = useAddTorrent();
 
+  const [activeTab, setActiveTab] = useState<"magnet" | "file">("magnet");
   const [magnetText, setMagnetText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [savepath, setSavepath] = useState("");
@@ -27,6 +28,38 @@ export function AddTorrentModal() {
   const [dragOver, setDragOver] = useState(false);
   const [magnetError, setMagnetError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Listen for magnet:// and .torrent open events from Electron.
+  useEffect(() => {
+    const unsubUrl = window.qbitui?.onOpenUrl((url) => {
+      if (url.startsWith("magnet:")) {
+        setMagnetText(url);
+        setActiveTab("magnet");
+        setAddModalOpen(true);
+      }
+    });
+
+    const unsubFile = window.qbitui?.onOpenFile((pending) => {
+      try {
+        const bytes = Uint8Array.from(atob(pending.data), (c) => c.charCodeAt(0));
+        const blob = new Blob([bytes], { type: "application/x-bittorrent" });
+        const file = new File([blob], pending.name, { type: "application/x-bittorrent" });
+        setFiles((prev) => {
+          const existing = new Set(prev.map((f) => f.name));
+          return existing.has(file.name) ? prev : [...prev, file];
+        });
+        setActiveTab("file");
+        setAddModalOpen(true);
+      } catch {
+        toast.error(`Failed to open torrent file: ${pending.name}`);
+      }
+    });
+
+    return () => {
+      unsubUrl?.();
+      unsubFile?.();
+    };
+  }, [setAddModalOpen]);
 
   function reset() {
     setMagnetText("");
@@ -136,7 +169,7 @@ export function AddTorrentModal() {
           <DialogTitle>Add Torrent</DialogTitle>
         </DialogHeader>
 
-        <Tabs defaultValue="magnet">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "magnet" | "file")}>
           <TabsList className="w-full">
             <TabsTrigger value="magnet" className="flex-1 gap-2">
               <Link className="h-4 w-4" /> Magnet Link

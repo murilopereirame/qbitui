@@ -9,6 +9,7 @@ interface UIState {
   selectedHashes: Set<string>;
   activeTorrentHash?: string;
   isAddModalOpen: boolean;
+  pendingMagnet: string | null;
 
   setFilter: (filter: TorrentFilter) => void;
   setSearch: (search: string) => void;
@@ -20,6 +21,7 @@ interface UIState {
   clearSelection: () => void;
   setActiveTorrentHash: (hash?: string) => void;
   setAddModalOpen: (open: boolean) => void;
+  setPendingMagnet: (url: string | null) => void;
 }
 
 export const useUIStore = create<UIState>((set, get) => ({
@@ -30,6 +32,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   selectedHashes: new Set(),
   activeTorrentHash: undefined,
   isAddModalOpen: false,
+  pendingMagnet: null,
 
   setFilter: (filter) => set({ filter, selectedHashes: new Set() }),
   setSearch: (search) => set({ search }),
@@ -56,4 +59,5 @@ export const useUIStore = create<UIState>((set, get) => ({
   clearSelection: () => set({ selectedHashes: new Set() }),
   setActiveTorrentHash: (activeTorrentHash) => set({ activeTorrentHash }),
   setAddModalOpen: (open) => set({ isAddModalOpen: open }),
+  setPendingMagnet: (url) => set({ pendingMagnet: url }),
 }));

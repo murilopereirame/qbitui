@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   LogOut,
   Wifi,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TorrentFilter } from "@/lib/types";
@@ -39,7 +40,7 @@ export function Sidebar() {
 
   const counts: Record<TorrentFilter, number> = {
     all: data?.length ?? 0,
-    downloading: data?.filter((t) => ["downloading", "stalledDL", "metaDL", "forcedDL", "queuedDL", "allocating"].includes(t.state)).length ?? 0,
+    downloading: data?.filter((t) => ["downloading", "stalledDL", "metaDL", "forcedDL", "queuedDL", "allocating", "pausedDL"].includes(t.state)).length ?? 0,
     seeding: data?.filter((t) => ["uploading", "stalledUP", "forcedUP", "queuedUP"].includes(t.state)).length ?? 0,
     paused: data?.filter((t) => ["pausedDL", "pausedUP"].includes(t.state)).length ?? 0,
     completed: data?.filter((t) => t.progress === 1).length ?? 0,
@@ -61,7 +62,7 @@ export function Sidebar() {
         {NAV_ITEMS.map(({ label, filter: f, icon }) => (
           <button
             key={f}
-            onClick={() => setFilter(f)}
+            onClick={() => { router.push("/dashboard"); setFilter(f); }}
             className={cn(
               "w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm transition-colors cursor-pointer",
               filter === f
@@ -92,6 +93,13 @@ export function Sidebar() {
           <Wifi className="h-3.5 w-3.5" />
           <span>{isError ? "Disconnected" : "Connected"}</span>
         </div>
+        <button
+          onClick={() => router.push("/settings")}
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+        >
+          <Settings className="h-4 w-4" />
+          Settings
+        </button>
         <button
           onClick={handleLogout}
           className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"

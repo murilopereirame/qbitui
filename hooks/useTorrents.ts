@@ -44,7 +44,7 @@ export function useTorrents() {
       data = data.filter((t) => {
         switch (filter) {
           case "downloading":
-            return ["downloading", "stalledDL", "metaDL", "forcedDL", "queuedDL", "allocating"].includes(t.state);
+            return ["downloading", "stalledDL", "metaDL", "forcedDL", "queuedDL", "allocating", "pausedDL"].includes(t.state);
           case "seeding":
             return ["uploading", "stalledUP", "forcedUP", "queuedUP"].includes(t.state);
           case "paused":

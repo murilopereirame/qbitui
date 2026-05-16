@@ -40,7 +40,21 @@
       "hardenedRuntime": false,
       "gatekeeperAssess": false,
       "extendInfo": {
-        "NSLocalNetworkUsageDescription": "qbitUI needs access to your local network to connect to qBittorrent instances running on other devices."
+        "NSLocalNetworkUsageDescription": "qbitUI needs access to your local network to connect to qBittorrent instances running on other devices.",
+        "CFBundleDocumentTypes": [
+          {
+            "CFBundleTypeName": "BitTorrent Torrent File",
+            "CFBundleTypeExtensions": ["torrent"],
+            "CFBundleTypeRole": "Editor",
+            "LSHandlerRank": "Owner"
+          }
+        ],
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLName": "magnet",
+            "CFBundleURLSchemes": ["magnet"]
+          }
+        ]
       },
       "target": [
         { "target": "dmg", "arch": ["x64", "arm64"] },
@@ -61,7 +75,21 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
-    }
+    },
+    "fileAssociations": [
+      {
+        "ext": "torrent",
+        "name": "BitTorrent Torrent File",
+        "description": "BitTorrent Torrent File",
+        "role": "Editor"
+      }
+    ],
+    "protocols": [
+      {
+        "name": "magnet",
+        "schemes": ["magnet"]
+      }
+    ]
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.3.3",

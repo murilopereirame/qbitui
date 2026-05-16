@@ -63,6 +63,11 @@ export function TorrentRow({ torrent }: TorrentRowProps) {
         />
       </td>
 
+      {/* Priority */}
+      <td className="px-2 py-2 whitespace-nowrap text-sm text-gray-500 text-right tabular-nums">
+        {torrent.priority > 0 ? torrent.priority : "—"}
+      </td>
+
       {/* Name */}
       <td className="px-2 py-2 max-w-0">
         <div className="truncate text-sm text-white font-medium" title={torrent.name}>

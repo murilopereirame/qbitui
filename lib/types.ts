@@ -175,6 +175,7 @@ export type TorrentDetailsSection = "properties" | "trackers" | "peers" | "webSe
 export type PartialTorrentDetails = Partial<TorrentDetails>;
 
 export type SortField =
+  | "priority"
   | "name"
   | "size"
   | "progress"

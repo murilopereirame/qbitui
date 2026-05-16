@@ -11,6 +11,7 @@ import { ChevronUp, ChevronDown, Loader2, Play, Pause, Trash2, ChevronsUp, Chevr
 import { toast } from "sonner";
 
 const COLUMNS: { label: string; field?: SortField; className?: string }[] = [
+  { label: "#", field: "priority", className: "w-10 text-right" },
   { label: "Name", field: "name", className: "min-w-[14rem]" },
   { label: "State", field: "state", className: "w-28" },
   { label: "%", field: "progress", className: "w-14 text-right" },
@@ -65,38 +66,42 @@ export function TorrentTable() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Bulk action bar */}
-      {selectedHashes.size > 0 && (
-        <div className="flex items-center gap-2 px-4 py-2 bg-blue-600/10 border-b border-blue-600/20 shrink-0">
+      {/* Bulk action bar — always visible */}
+      <div className="flex items-center gap-2 px-4 py-2 bg-gray-900/60 border-b border-white/10 shrink-0">
+        {selectedHashes.size > 0 ? (
           <span className="text-sm text-blue-300 font-medium mr-2">
             {selectedHashes.size} selected
           </span>
-          <Button size="sm" variant="secondary" onClick={() => bulkAction("resume")} className="gap-1.5">
-            <Play className="h-3.5 w-3.5" /> Resume
-          </Button>
-          <Button size="sm" variant="secondary" onClick={() => bulkAction("pause")} className="gap-1.5">
-            <Pause className="h-3.5 w-3.5" /> Pause
-          </Button>
-          <Button size="sm" variant="secondary" onClick={() => bulkAction("topPrio")} className="gap-1.5">
-            <ChevronsUp className="h-3.5 w-3.5" /> Top
-          </Button>
-          <Button size="sm" variant="secondary" onClick={() => bulkAction("increasePrio")} className="gap-1.5">
-            <ArrowUp className="h-3.5 w-3.5" /> Up
-          </Button>
-          <Button size="sm" variant="secondary" onClick={() => bulkAction("decreasePrio")} className="gap-1.5">
-            <ArrowDown className="h-3.5 w-3.5" /> Down
-          </Button>
-          <Button size="sm" variant="secondary" onClick={() => bulkAction("bottomPrio")} className="gap-1.5">
-            <ChevronsDown className="h-3.5 w-3.5" /> Bottom
-          </Button>
-          <Button size="sm" variant="destructive" onClick={() => bulkAction("delete")} className="gap-1.5">
-            <Trash2 className="h-3.5 w-3.5" /> Delete
-          </Button>
+        ) : (
+          <span className="text-sm text-gray-600 mr-2">No torrents selected</span>
+        )}
+        <Button size="sm" variant="secondary" onClick={() => bulkAction("resume")} disabled={selectedHashes.size === 0} className="gap-1.5">
+          <Play className="h-3.5 w-3.5" /> Resume
+        </Button>
+        <Button size="sm" variant="secondary" onClick={() => bulkAction("pause")} disabled={selectedHashes.size === 0} className="gap-1.5">
+          <Pause className="h-3.5 w-3.5" /> Pause
+        </Button>
+        <Button size="sm" variant="secondary" onClick={() => bulkAction("topPrio")} disabled={selectedHashes.size === 0} className="gap-1.5">
+          <ChevronsUp className="h-3.5 w-3.5" /> Top
+        </Button>
+        <Button size="sm" variant="secondary" onClick={() => bulkAction("increasePrio")} disabled={selectedHashes.size === 0} className="gap-1.5">
+          <ArrowUp className="h-3.5 w-3.5" /> Up
+        </Button>
+        <Button size="sm" variant="secondary" onClick={() => bulkAction("decreasePrio")} disabled={selectedHashes.size === 0} className="gap-1.5">
+          <ArrowDown className="h-3.5 w-3.5" /> Down
+        </Button>
+        <Button size="sm" variant="secondary" onClick={() => bulkAction("bottomPrio")} disabled={selectedHashes.size === 0} className="gap-1.5">
+          <ChevronsDown className="h-3.5 w-3.5" /> Bottom
+        </Button>
+        <Button size="sm" variant="destructive" onClick={() => bulkAction("delete")} disabled={selectedHashes.size === 0} className="gap-1.5">
+          <Trash2 className="h-3.5 w-3.5" /> Delete
+        </Button>
+        {selectedHashes.size > 0 && (
           <Button size="sm" variant="ghost" onClick={clearSelection} className="ml-auto">
             Clear
           </Button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Table */}
       <div className="flex-1 overflow-auto">
@@ -136,14 +141,14 @@ export function TorrentTable() {
             {isLoading ? (
               Array.from({ length: 6 }).map((_, i) => (
                 <tr key={i} className="border-b border-white/5">
-                  <td colSpan={12} className="px-3 py-3">
+                  <td colSpan={13} className="px-3 py-3">
                     <div className="h-4 bg-white/5 rounded animate-pulse" />
                   </td>
                 </tr>
               ))
             ) : filteredTorrents.length === 0 ? (
               <tr>
-                <td colSpan={12} className="text-center py-16 text-gray-500">
+                <td colSpan={13} className="text-center py-16 text-gray-500">
                   <div className="flex flex-col items-center gap-2">
                     <Loader2 className="h-8 w-8 opacity-20" />
                     <span>No torrents found</span>

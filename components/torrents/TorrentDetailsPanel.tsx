@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -192,6 +192,41 @@ export function TorrentDetailsPanel() {
   const { mutate: setPriority, isPending } = useSetTorrentFilePriority();
   const [selectedNodes, setSelectedNodes] = useState<Set<string>>(new Set());
 
+  // Resizable panel state
+  const [panelHeight, setPanelHeight] = useState(320);
+  const dragRef = useRef({ active: false, startY: 0, startHeight: 320 });
+
+  // onDragStart creates new move/end closures each time a drag begins so there
+  // are no circular useCallback dependencies and no ref mutations during render.
+  function onDragStart(e: React.MouseEvent) {
+    e.preventDefault();
+    const startHeight = panelHeight;
+    dragRef.current = { active: true, startY: e.clientY, startHeight };
+
+    function onMove(ev: MouseEvent) {
+      if (!dragRef.current.active) return;
+      const delta = dragRef.current.startY - ev.clientY;
+      const next = Math.max(120, Math.min(window.innerHeight * 0.75, dragRef.current.startHeight + delta));
+      setPanelHeight(next);
+    }
+
+    function onEnd() {
+      dragRef.current.active = false;
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onEnd);
+    }
+
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onEnd);
+  }
+
+  useEffect(() => {
+    return () => {
+      // Ensure drag listeners don't linger if the panel is unmounted mid-drag.
+      dragRef.current.active = false;
+    };
+  }, []);
+
   const selectedTorrent = useMemo(
     () => torrents?.find((t) => t.hash === activeTorrentHash),
     [torrents, activeTorrentHash]
@@ -235,19 +270,44 @@ export function TorrentDetailsPanel() {
 
   if (!activeTorrentHash) {
     return (
-      <div className="h-72 border-t border-white/10 p-4 text-sm text-gray-500">
+      <div
+        className="border-t border-white/10 p-4 text-sm text-gray-500 shrink-0"
+        style={{ height: panelHeight }}
+      >
+        <div
+          className="absolute top-0 left-0 right-0 h-1 cursor-row-resize hover:bg-blue-500/40 transition-colors"
+          onMouseDown={onDragStart}
+        />
         Select a torrent to view details.
       </div>
     );
   }
 
   if (isLoading) {
-    return <div className="h-72 border-t border-white/10 p-4 text-sm text-gray-500">Loading details…</div>;
+    return (
+      <div
+        className="relative border-t border-white/10 p-4 text-sm text-gray-500 shrink-0"
+        style={{ height: panelHeight }}
+      >
+        <div
+          className="absolute top-0 left-0 right-0 h-1 cursor-row-resize hover:bg-blue-500/40 transition-colors"
+          onMouseDown={onDragStart}
+        />
+        Loading details…
+      </div>
+    );
   }
 
   if (isError || !data || !selectedTorrent) {
     return (
-      <div className="h-72 border-t border-white/10 p-4 text-sm text-red-400">
+      <div
+        className="relative border-t border-white/10 p-4 text-sm text-red-400 shrink-0"
+        style={{ height: panelHeight }}
+      >
+        <div
+          className="absolute top-0 left-0 right-0 h-1 cursor-row-resize hover:bg-blue-500/40 transition-colors"
+          onMouseDown={onDragStart}
+        />
         {error instanceof Error ? error.message : "Failed to load torrent details"}
       </div>
     );
@@ -288,7 +348,18 @@ export function TorrentDetailsPanel() {
   ] : [];
 
   return (
-    <div className="h-80 border-t border-white/10 px-4 py-3 overflow-hidden">
+    <div
+      className="relative border-t border-white/10 px-4 py-3 overflow-hidden shrink-0"
+      style={{ height: panelHeight }}
+    >
+      {/* Drag handle */}
+      <div
+        className="absolute top-0 left-0 right-0 h-1.5 cursor-row-resize hover:bg-blue-500/40 transition-colors group"
+        onMouseDown={onDragStart}
+        title="Drag to resize"
+      >
+        <div className="absolute inset-x-0 top-0 h-px bg-white/10 group-hover:bg-blue-500/60 transition-colors" />
+      </div>
       <div className="mb-2 text-sm text-white font-medium truncate">{selectedTorrent.name}</div>
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TorrentDetailsTab)} className="h-full flex flex-col">
         <TabsList className="w-full justify-start overflow-x-auto">

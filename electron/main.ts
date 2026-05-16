@@ -17,6 +17,11 @@ let mainWindow: BrowserWindow | null = null;
 let logsWindow: BrowserWindow | null = null;
 let serverProcess: UtilityProcess | null = null;
 
+// Pending protocol events received before the window is ready.
+let pendingOpenUrl: string | null = null;
+interface PendingFile { name: string; data: string }
+let pendingOpenFile: PendingFile | null = null;
+
 // ---------------------------------------------------------------------------
 // Server log buffer
 // ---------------------------------------------------------------------------
@@ -295,6 +300,18 @@ function createWindow(): void {
     mainWindow?.show();
   });
 
+  // Flush any protocol events that arrived before the window was ready.
+  mainWindow.webContents.once("did-finish-load", () => {
+    if (pendingOpenUrl) {
+      mainWindow?.webContents.send("open-url", pendingOpenUrl);
+      pendingOpenUrl = null;
+    }
+    if (pendingOpenFile) {
+      mainWindow?.webContents.send("open-file", pendingOpenFile);
+      pendingOpenFile = null;
+    }
+  });
+
   // Open external links in the OS default browser instead of a new Electron window.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (!url.startsWith(`http://127.0.0.1:${PORT}`) && !url.startsWith(`http://localhost:${PORT}`)) {
@@ -307,6 +324,39 @@ function createWindow(): void {
     mainWindow = null;
   });
 }
+
+// ---------------------------------------------------------------------------
+// Protocol / file-type handler events
+// (Must be registered before app.whenReady so they work from cold launch too)
+// ---------------------------------------------------------------------------
+
+app.on("open-url", (event, url) => {
+  event.preventDefault();
+  if (mainWindow) {
+    mainWindow.webContents.send("open-url", url);
+    mainWindow.focus();
+  } else {
+    pendingOpenUrl = url;
+  }
+});
+
+app.on("open-file", (event, filePath) => {
+  event.preventDefault();
+  if (!filePath.toLowerCase().endsWith(".torrent")) return;
+  let fileData: string;
+  try {
+    fileData = fs.readFileSync(filePath).toString("base64");
+  } catch {
+    return;
+  }
+  const payload: PendingFile = { name: path.basename(filePath), data: fileData };
+  if (mainWindow) {
+    mainWindow.webContents.send("open-file", payload);
+    mainWindow.focus();
+  } else {
+    pendingOpenFile = payload;
+  }
+});
 
 // ---------------------------------------------------------------------------
 // App lifecycle
@@ -326,6 +376,13 @@ app.whenReady().then(async () => {
   });
 
   ipcMain.handle("logs:get", () => serverLogs.slice());
+
+  ipcMain.handle("handlers:magnet:status", () => app.isDefaultProtocolClient("magnet"));
+  ipcMain.handle("handlers:magnet:set", (_event, enable: boolean) =>
+    enable
+      ? app.setAsDefaultProtocolClient("magnet")
+      : app.removeAsDefaultProtocolClient("magnet")
+  );
 
   buildApplicationMenu();
 
