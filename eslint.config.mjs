@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "electron/dist/**",
     "dist-electron/**",
     "next-env.d.ts",
+    // Mobile app has its own ESLint config and toolchain
+    "mobile/**",
     // Monorepo packages have their own lint rules
     "packages/**",
   ]),
