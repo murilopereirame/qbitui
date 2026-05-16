@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   useWindowDimensions,
   ScrollView,
+  StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTorrents } from "../../hooks/useTorrents";
@@ -12,6 +13,9 @@ import { useSessionStore } from "../../hooks/useSession";
 import { useUIStore } from "../../store";
 import { countByFilter } from "@qbitui/core";
 import type { TorrentFilter } from "@qbitui/core";
+
+/** Width of the persistent sidebar on tablet/iPad layouts (dp). */
+const SIDEBAR_WIDTH = 220;
 
 const NAV_ITEMS: { label: string; filter: TorrentFilter; emoji: string }[] = [
   { label: "All", filter: "all", emoji: "📋" },
@@ -106,7 +110,7 @@ export default function TabsLayout() {
     // iPad / tablet: persistent sidebar + content
     return (
       <SafeAreaView className="flex-1 flex-row bg-gray-950">
-        <View style={{ width: 220 }}>
+        <View style={StyleSheet.flatten({ width: SIDEBAR_WIDTH })}>
           <SidebarContent />
         </View>
         <View className="flex-1">

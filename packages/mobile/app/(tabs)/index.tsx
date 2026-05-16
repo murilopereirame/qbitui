@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   useWindowDimensions,
+  StyleSheet,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTorrents, useTorrentAction } from "../../hooks/useTorrents";
@@ -44,8 +45,12 @@ export default function DashboardScreen() {
     return item.hash;
   }
 
+  const topPadding = isTablet ? 0 : insets.top;
+  const bottomPadding = isTablet ? 8 : insets.bottom;
+  const listBottomPadding = insets.bottom + 16;
+
   return (
-    <View className="flex-1 bg-gray-950" style={{ paddingTop: isTablet ? 0 : insets.top }}>
+    <View className="flex-1 bg-gray-950" style={StyleSheet.flatten({ paddingTop: topPadding })}>
       {/* Top bar */}
       <View className="flex-row items-center gap-2 px-4 py-3 border-b border-white/10 bg-gray-950/50">
         {/* Filter button (phone only) */}
@@ -147,7 +152,7 @@ export default function DashboardScreen() {
           data={filteredTorrents}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
-          contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}
+          contentContainerStyle={StyleSheet.flatten({ paddingBottom: listBottomPadding })}
           ItemSeparatorComponent={() => <View className="h-px bg-white/5" />}
         />
       )}
@@ -155,7 +160,7 @@ export default function DashboardScreen() {
       {/* Footer */}
       <View
         className="px-4 py-2 border-t border-white/10"
-        style={{ paddingBottom: isTablet ? 8 : insets.bottom }}
+        style={StyleSheet.flatten({ paddingBottom: bottomPadding })}
       >
         <Text className="text-gray-500 text-xs">
           {filteredTorrents.length} torrent{filteredTorrents.length !== 1 ? "s" : ""}

@@ -9,6 +9,7 @@ import {
   Switch,
   ActivityIndicator,
   Platform,
+  StyleSheet,
 } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import { useUIStore } from "../store";
@@ -214,7 +215,8 @@ export function AddTorrentModal() {
                     value={magnetText}
                     onChangeText={(t) => { setMagnetText(t); setMagnetError(""); }}
                     multiline
-                    style={{ minHeight: 100, textAlignVertical: "top" }}
+                    numberOfLines={5}
+                    style={styles.magnetInput}
                     autoCapitalize="none"
                     autoCorrect={false}
                   />
@@ -303,3 +305,10 @@ export function AddTorrentModal() {
     </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  magnetInput: {
+    minHeight: 100,
+    textAlignVertical: "top",
+  },
+});
