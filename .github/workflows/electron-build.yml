@@ -5,8 +5,14 @@ on:
     branches: [main]
     tags:
       - "v*"
+    paths-ignore:
+      - "mobile/**"
+      - ".github/workflows/mobile-build.yml"
   pull_request:
     branches: [main]
+    paths-ignore:
+      - "mobile/**"
+      - ".github/workflows/mobile-build.yml"
   workflow_dispatch:
 
 # Default to read-only; the release job overrides to write for contents.
