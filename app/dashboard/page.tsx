@@ -3,10 +3,12 @@ import { TopBar } from "@/components/layout/TopBar";
 import { TorrentTable } from "@/components/torrents/TorrentTable";
 import { AddTorrentModal } from "@/components/torrents/AddTorrentModal";
 import { TorrentDetailsPanel } from "@/components/torrents/TorrentDetailsPanel";
+import { SessionKeepAlive } from "@/components/auth/SessionKeepAlive";
 
 export default function DashboardPage() {
   return (
     <div className="flex h-screen overflow-hidden bg-gray-950">
+      <SessionKeepAlive />
       <Sidebar />
       <div className="flex flex-col flex-1 overflow-hidden">
         <TopBar />
