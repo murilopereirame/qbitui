@@ -10,6 +10,7 @@ declare global {
       getCredentials: () => Promise<SavedCredentials | null>;
       setCredentials: (credentials: SavedCredentials) => Promise<boolean>;
       clearCredentials: () => Promise<boolean>;
+      getLogs: () => Promise<string[]>;
     };
   }
 }

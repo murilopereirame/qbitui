@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, ipcMain, safeStorage } from "electron";
+import { app, BrowserWindow, shell, ipcMain, safeStorage, Menu } from "electron";
 import { utilityProcess, UtilityProcess } from "electron";
 import path from "path";
 import http from "http";
@@ -14,7 +14,25 @@ const PORT = 3000;
 const SESSION_SECRET = crypto.randomBytes(32).toString("hex");
 
 let mainWindow: BrowserWindow | null = null;
+let logsWindow: BrowserWindow | null = null;
 let serverProcess: UtilityProcess | null = null;
+
+// ---------------------------------------------------------------------------
+// Server log buffer
+// ---------------------------------------------------------------------------
+
+const MAX_LOG_LINES = 2_000;
+const serverLogs: string[] = [];
+
+function appendLog(chunk: Buffer | string): void {
+  const text = typeof chunk === "string" ? chunk : chunk.toString("utf8");
+  for (const line of text.split("\n")) {
+    if (line.trim()) serverLogs.push(line);
+  }
+  if (serverLogs.length > MAX_LOG_LINES) {
+    serverLogs.splice(0, serverLogs.length - MAX_LOG_LINES);
+  }
+}
 
 interface SavedCredentials {
   host: string;
@@ -143,12 +161,111 @@ async function startEmbeddedServer(): Promise<void> {
     }
   });
 
+  serverProcess.stdout?.on("data", appendLog);
+  serverProcess.stderr?.on("data", appendLog);
+
   await waitForServer(`http://127.0.0.1:${PORT}`);
 }
 
 // ---------------------------------------------------------------------------
-// Window
+// Window helpers
 // ---------------------------------------------------------------------------
+
+function createLogsWindow(): void {
+  if (logsWindow) {
+    logsWindow.focus();
+    return;
+  }
+
+  logsWindow = new BrowserWindow({
+    width: 960,
+    height: 640,
+    title: "Server Logs — qbitUI",
+    backgroundColor: "#030712",
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
+  });
+
+  const logsUrl = isDev
+    ? `http://localhost:${PORT}/logs`
+    : `http://127.0.0.1:${PORT}/logs`;
+
+  logsWindow.loadURL(logsUrl);
+
+  logsWindow.on("closed", () => {
+    logsWindow = null;
+  });
+}
+
+function buildApplicationMenu(): void {
+  const isMac = process.platform === "darwin";
+
+  const template: Electron.MenuItemConstructorOptions[] = [
+    // macOS application menu
+    ...(isMac
+      ? [
+          {
+            label: app.name,
+            submenu: [
+              { role: "about" as const },
+              { type: "separator" as const },
+              { role: "services" as const },
+              { type: "separator" as const },
+              { role: "hide" as const },
+              { role: "hideOthers" as const },
+              { role: "unhide" as const },
+              { type: "separator" as const },
+              { role: "quit" as const },
+            ],
+          },
+        ]
+      : []),
+    {
+      label: "Edit",
+      submenu: [
+        { role: "cut" as const },
+        { role: "copy" as const },
+        { role: "paste" as const },
+        { role: "selectAll" as const },
+      ],
+    },
+    {
+      label: "View",
+      submenu: [
+        {
+          label: "Server Logs…",
+          accelerator: "CmdOrCtrl+L",
+          click: () => createLogsWindow(),
+        },
+        { type: "separator" as const },
+        { role: "reload" as const },
+        { role: "forceReload" as const },
+        { role: "toggleDevTools" as const },
+        { type: "separator" as const },
+        { role: "resetZoom" as const },
+        { role: "zoomIn" as const },
+        { role: "zoomOut" as const },
+        { type: "separator" as const },
+        { role: "togglefullscreen" as const },
+      ],
+    },
+    {
+      label: "Window",
+      submenu: [
+        { role: "minimize" as const },
+        { role: "zoom" as const },
+        ...(isMac
+          ? [{ type: "separator" as const }, { role: "front" as const }]
+          : [{ role: "close" as const }]),
+      ],
+    },
+  ];
+
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -207,6 +324,10 @@ app.whenReady().then(async () => {
   ipcMain.handle("credentials:clear", () => {
     return clearCredentials();
   });
+
+  ipcMain.handle("logs:get", () => serverLogs.slice());
+
+  buildApplicationMenu();
 
   if (!isDev) {
     try {

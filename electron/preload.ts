@@ -10,6 +10,8 @@ const api = {
   getCredentials: () => ipcRenderer.invoke("credentials:get") as Promise<SavedCredentials | null>,
   setCredentials: (credentials: SavedCredentials) => ipcRenderer.invoke("credentials:set", credentials) as Promise<boolean>,
   clearCredentials: () => ipcRenderer.invoke("credentials:clear") as Promise<boolean>,
+  getLogs: () => ipcRenderer.invoke("logs:get") as Promise<string[]>,
 };
 
 contextBridge.exposeInMainWorld("qbitui", api);
+

@@ -23,6 +23,7 @@
   "build": {
     "appId": "com.qbitui.app",
     "productName": "qbitUI",
+    "afterPack": "electron/afterpack.mjs",
     "directories": {
       "output": "dist-electron"
     },
@@ -36,6 +37,11 @@
     ],
     "mac": {
       "category": "public.app-category.utilities",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "extendInfo": {
+        "NSLocalNetworkUsageDescription": "qbitUI needs access to your local network to connect to qBittorrent instances running on other devices."
+      },
       "target": [
         { "target": "dmg", "arch": ["x64", "arm64"] },
         { "target": "zip", "arch": ["x64", "arm64"] }
