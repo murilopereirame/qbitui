@@ -132,6 +132,7 @@ function PrioritySelect({
 }) {
   return (
     <select
+      aria-label={value === "mixed" ? "Mixed download priority (read-only)" : "Download priority"}
       className="bg-gray-900 border border-white/10 rounded px-2 py-1 text-xs"
       value={typeof value === "number" ? String(value) : "mixed"}
       onChange={(e) => {

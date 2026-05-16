@@ -49,6 +49,7 @@ export function LoginForm() {
       try {
         await login(creds.host, creds.username, creds.password, false);
       } catch {
+        await window.qbitui?.clearCredentials();
         if (!cancelled) {
           setError("Saved login failed. Please sign in again.");
         }

@@ -2,6 +2,8 @@ import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { TorrentState } from "./types";
 
+const INFINITE_RATIO = 999;
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -39,7 +41,7 @@ export function formatRatio(ratio: number): string {
 }
 
 export function calculateUploadedDownloadedRatio(uploaded: number, downloaded: number): number {
-  if (downloaded <= 0) return uploaded > 0 ? 999 : 0;
+  if (downloaded <= 0) return uploaded > 0 ? INFINITE_RATIO : 0;
   return uploaded / downloaded;
 }
 
