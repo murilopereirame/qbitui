@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "electron/dist/**",
     "dist-electron/**",
     "next-env.d.ts",
+    // Monorepo packages have their own lint rules
+    "packages/**",
   ]),
 ]);
 
