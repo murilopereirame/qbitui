@@ -4,6 +4,7 @@ import path from "path";
 import http from "http";
 import crypto from "crypto";
 import fs from "fs";
+import { execFileSync } from "child_process";
 
 // True when launched via `electron .` (development), false when packaged.
 const isDev = !app.isPackaged;
@@ -300,18 +301,6 @@ function createWindow(): void {
     mainWindow?.show();
   });
 
-  // Flush any protocol events that arrived before the window was ready.
-  mainWindow.webContents.once("did-finish-load", () => {
-    if (pendingOpenUrl) {
-      mainWindow?.webContents.send("open-url", pendingOpenUrl);
-      pendingOpenUrl = null;
-    }
-    if (pendingOpenFile) {
-      mainWindow?.webContents.send("open-file", pendingOpenFile);
-      pendingOpenFile = null;
-    }
-  });
-
   // Open external links in the OS default browser instead of a new Electron window.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (!url.startsWith(`http://127.0.0.1:${PORT}`) && !url.startsWith(`http://localhost:${PORT}`)) {
@@ -326,17 +315,76 @@ function createWindow(): void {
 }
 
 // ---------------------------------------------------------------------------
+// .torrent file-type handler helpers
+// ---------------------------------------------------------------------------
+
+const LSREGISTER = "/System/Library/Frameworks/CoreServices.framework/Versions/A/Support/lsregister";
+
+function getTorrentHandlerFlagPath(): string {
+  return path.join(app.getPath("userData"), "torrentHandlerRegistered.flag");
+}
+
+/** Returns the .app bundle path (macOS only, production only). */
+function getAppBundlePath(): string | null {
+  if (process.platform !== "darwin" || isDev) return null;
+  // process.execPath is e.g. /Applications/qbitUI.app/Contents/MacOS/qbitUI
+  return path.resolve(process.execPath, "..", "..", "..");
+}
+
+function isTorrentHandlerRegistered(): boolean {
+  if (process.platform === "darwin") {
+    return fs.existsSync(getTorrentHandlerFlagPath());
+  }
+  return false;
+}
+
+function registerTorrentHandler(): boolean {
+  if (process.platform === "darwin") {
+    const bundlePath = getAppBundlePath();
+    if (!bundlePath) return false;
+    try {
+      execFileSync(LSREGISTER, ["-R", "-f", bundlePath]);
+      fs.writeFileSync(getTorrentHandlerFlagPath(), "1", "utf8");
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+function unregisterTorrentHandler(): boolean {
+  if (process.platform === "darwin") {
+    const bundlePath = getAppBundlePath();
+    if (!bundlePath) return false;
+    try {
+      execFileSync(LSREGISTER, ["-u", bundlePath]);
+      const flagPath = getTorrentHandlerFlagPath();
+      if (fs.existsSync(flagPath)) fs.unlinkSync(flagPath);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+// ---------------------------------------------------------------------------
 // Protocol / file-type handler events
 // (Must be registered before app.whenReady so they work from cold launch too)
 // ---------------------------------------------------------------------------
 
+// Always store pending items regardless of whether mainWindow exists.
+// The renderer drains these via IPC on mount. We also send a real-time IPC
+// message when the window already exists so an already-open modal reacts
+// immediately without waiting for remount.
+
 app.on("open-url", (event, url) => {
   event.preventDefault();
+  pendingOpenUrl = url;
   if (mainWindow) {
     mainWindow.webContents.send("open-url", url);
     mainWindow.focus();
-  } else {
-    pendingOpenUrl = url;
   }
 });
 
@@ -350,11 +398,10 @@ app.on("open-file", (event, filePath) => {
     return;
   }
   const payload: PendingFile = { name: path.basename(filePath), data: fileData };
+  pendingOpenFile = payload;
   if (mainWindow) {
     mainWindow.webContents.send("open-file", payload);
     mainWindow.focus();
-  } else {
-    pendingOpenFile = payload;
   }
 });
 
@@ -377,12 +424,31 @@ app.whenReady().then(async () => {
 
   ipcMain.handle("logs:get", () => serverLogs.slice());
 
+  // Drain handlers: renderer calls these on mount to pick up events that fired
+  // before the React component subscribed (e.g. cold-start file open).
+  ipcMain.handle("pending:open-url:consume", () => {
+    const url = pendingOpenUrl;
+    pendingOpenUrl = null;
+    return url;
+  });
+  ipcMain.handle("pending:open-file:consume", () => {
+    const file = pendingOpenFile;
+    pendingOpenFile = null;
+    return file;
+  });
+
   ipcMain.handle("handlers:magnet:status", () => app.isDefaultProtocolClient("magnet"));
   ipcMain.handle("handlers:magnet:set", (_event, enable: boolean) =>
     enable
       ? app.setAsDefaultProtocolClient("magnet")
       : app.removeAsDefaultProtocolClient("magnet")
   );
+
+  ipcMain.handle("handlers:torrent:status", () => isTorrentHandlerRegistered());
+  ipcMain.handle("handlers:torrent:set", (_event, enable: boolean) => {
+    if (enable) return registerTorrentHandler();
+    return unregisterTorrentHandler();
+  });
 
   buildApplicationMenu();
 

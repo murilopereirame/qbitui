@@ -57,6 +57,8 @@ export function getStateLabel(state: TorrentState): string {
     uploading: "Seeding",
     pausedDL: "Paused",
     pausedUP: "Paused",
+    stoppedDL: "Stopped",
+    stoppedUP: "Stopped",
     stalledDL: "Stalled",
     stalledUP: "Stalled",
     checkingDL: "Checking",
@@ -86,6 +88,8 @@ export function getStateColor(state: TorrentState): string {
       return "bg-green-500/20 text-green-400 border-green-500/30";
     case "pausedDL":
     case "pausedUP":
+    case "stoppedDL":
+    case "stoppedUP":
       return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30";
     case "stalledDL":
     case "stalledUP":

@@ -44,7 +44,7 @@ export function TorrentRow({ torrent }: TorrentRowProps) {
     );
   }
 
-  const isPaused = torrent.state === "pausedDL" || torrent.state === "pausedUP";
+  const isPaused = ["pausedDL", "pausedUP", "stoppedDL", "stoppedUP"].includes(torrent.state);
 
   return (
     <tr

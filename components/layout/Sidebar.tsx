@@ -40,9 +40,9 @@ export function Sidebar() {
 
   const counts: Record<TorrentFilter, number> = {
     all: data?.length ?? 0,
-    downloading: data?.filter((t) => ["downloading", "stalledDL", "metaDL", "forcedDL", "queuedDL", "allocating", "pausedDL"].includes(t.state)).length ?? 0,
+    downloading: data?.filter((t) => ["downloading", "stalledDL", "metaDL", "forcedDL", "queuedDL", "allocating", "pausedDL", "stoppedDL"].includes(t.state)).length ?? 0,
     seeding: data?.filter((t) => ["uploading", "stalledUP", "forcedUP", "queuedUP"].includes(t.state)).length ?? 0,
-    paused: data?.filter((t) => ["pausedDL", "pausedUP"].includes(t.state)).length ?? 0,
+    paused: data?.filter((t) => ["pausedDL", "pausedUP", "stoppedDL", "stoppedUP"].includes(t.state)).length ?? 0,
     completed: data?.filter((t) => t.progress === 1).length ?? 0,
     error: data?.filter((t) => ["error", "missingFiles"].includes(t.state)).length ?? 0,
   };

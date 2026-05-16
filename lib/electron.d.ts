@@ -18,6 +18,10 @@ declare global {
       getLogs: () => Promise<string[]>;
       getMagnetHandlerStatus: () => Promise<boolean>;
       setMagnetHandler: (enable: boolean) => Promise<boolean>;
+      getTorrentHandlerStatus: () => Promise<boolean>;
+      setTorrentHandler: (enable: boolean) => Promise<boolean>;
+      consumePendingOpenUrl: () => Promise<string | null>;
+      consumePendingOpenFile: () => Promise<PendingFile | null>;
       onOpenUrl: (callback: (url: string) => void) => () => void;
       onOpenFile: (callback: (file: PendingFile) => void) => () => void;
     };

@@ -7,54 +7,54 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Magnet, FileText, Info } from "lucide-react";
 
-interface HandlerRow {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-  status: boolean | null;
-  onToggle?: (enabled: boolean) => void;
-  note?: string;
+interface HandlerState {
+  status: boolean | null; // null = loading
+  busy: boolean;
 }
 
 export default function SettingsPage() {
   const isElectron = typeof window !== "undefined" && !!window.qbitui;
-  const [magnetEnabled, setMagnetEnabled] = useState<boolean | null>(null);
-  const [busy, setBusy] = useState(false);
+  const isMac = typeof window !== "undefined" && /Mac/.test(navigator.platform);
+
+  const [magnet, setMagnet] = useState<HandlerState>({ status: null, busy: false });
+  const [torrent, setTorrent] = useState<HandlerState>({ status: null, busy: false });
 
   useEffect(() => {
     if (!isElectron) return;
-    window.qbitui!.getMagnetHandlerStatus().then(setMagnetEnabled).catch(() => setMagnetEnabled(false));
+    window.qbitui!.getMagnetHandlerStatus()
+      .then((s) => setMagnet((p) => ({ ...p, status: s })))
+      .catch(() => setMagnet((p) => ({ ...p, status: false })));
+    window.qbitui!.getTorrentHandlerStatus()
+      .then((s) => setTorrent((p) => ({ ...p, status: s })))
+      .catch(() => setTorrent((p) => ({ ...p, status: false })));
   }, [isElectron]);
 
   async function toggleMagnet(enable: boolean) {
-    if (!isElectron || busy) return;
-    setBusy(true);
+    if (!isElectron || magnet.busy) return;
+    setMagnet((p) => ({ ...p, busy: true }));
     try {
       await window.qbitui!.setMagnetHandler(enable);
-      setMagnetEnabled(enable);
+      setMagnet({ status: enable, busy: false });
     } catch {
-      // status unchanged
-    } finally {
-      setBusy(false);
+      setMagnet((p) => ({ ...p, busy: false }));
     }
   }
 
-  const rows: HandlerRow[] = [
-    {
-      icon: <Magnet className="h-5 w-5 text-blue-400" />,
-      title: "magnet:// links",
-      description: "Open magnet links directly in qbitUI. Clicking a magnet link in your browser will automatically launch qbitUI and begin adding the torrent.",
-      status: magnetEnabled,
-      onToggle: toggleMagnet,
-    },
-    {
-      icon: <FileText className="h-5 w-5 text-purple-400" />,
-      title: ".torrent files",
-      description: "Associate .torrent files with qbitUI so that double-clicking a torrent file opens it in qbitUI.",
-      status: null,
-      note: "File association is configured at install time. Re-install the app to apply or change it.",
-    },
-  ];
+  async function toggleTorrent(enable: boolean) {
+    if (!isElectron || torrent.busy) return;
+    setTorrent((p) => ({ ...p, busy: true }));
+    try {
+      await window.qbitui!.setTorrentHandler(enable);
+      setTorrent({ status: enable, busy: false });
+    } catch {
+      setTorrent((p) => ({ ...p, busy: false }));
+    }
+  }
+
+  function handlerLabel(state: HandlerState) {
+    if (state.status === null) return "Checking…";
+    return state.status ? "Registered" : "Not registered";
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-950">
@@ -76,42 +76,77 @@ export default function SettingsPage() {
               Default Handler Registration
             </h2>
             <div className="space-y-3">
-              {rows.map((row) => (
-                <div
-                  key={row.title}
-                  className="flex items-start gap-4 p-4 bg-gray-900/60 border border-white/10 rounded-xl"
-                >
-                  <div className="mt-0.5 shrink-0">{row.icon}</div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-white text-sm mb-1">{row.title}</div>
-                    <div className="text-xs text-gray-400 leading-relaxed">{row.description}</div>
-                    {row.note && (
-                      <div className="flex items-start gap-1.5 mt-2 text-xs text-gray-500">
-                        <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                        {row.note}
-                      </div>
-                    )}
+
+              {/* magnet:// */}
+              <div className="flex items-start gap-4 p-4 bg-gray-900/60 border border-white/10 rounded-xl">
+                <div className="mt-0.5 shrink-0">
+                  <Magnet className="h-5 w-5 text-blue-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-white text-sm mb-1">magnet:// links</div>
+                  <div className="text-xs text-gray-400 leading-relaxed">
+                    Open magnet links directly in qbitUI. Clicking a magnet link in your browser will automatically launch qbitUI and begin adding the torrent.
                   </div>
-                  {row.onToggle ? (
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Label
-                        htmlFor={`handler-${row.title}`}
-                        className="text-xs text-gray-400 cursor-pointer select-none"
-                      >
-                        {row.status ? "Registered" : row.status === null ? "Checking…" : "Not registered"}
-                      </Label>
-                      <Switch
-                        id={`handler-${row.title}`}
-                        checked={row.status === true}
-                        onCheckedChange={row.onToggle}
-                        disabled={!isElectron || busy || row.status === null}
-                      />
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Label
+                    htmlFor="handler-magnet"
+                    className="text-xs text-gray-400 cursor-pointer select-none"
+                  >
+                    {handlerLabel(magnet)}
+                  </Label>
+                  <Switch
+                    id="handler-magnet"
+                    checked={magnet.status === true}
+                    onCheckedChange={toggleMagnet}
+                    disabled={!isElectron || magnet.busy || magnet.status === null}
+                  />
+                </div>
+              </div>
+
+              {/* .torrent files */}
+              <div className="flex items-start gap-4 p-4 bg-gray-900/60 border border-white/10 rounded-xl">
+                <div className="mt-0.5 shrink-0">
+                  <FileText className="h-5 w-5 text-purple-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-white text-sm mb-1">.torrent files</div>
+                  <div className="text-xs text-gray-400 leading-relaxed">
+                    Associate .torrent files with qbitUI so that double-clicking a torrent file opens it in qbitUI.
+                  </div>
+                  {torrent.status === true && isMac && (
+                    <div className="flex items-start gap-1.5 mt-2 text-xs text-gray-500">
+                      <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                      Registered. To set qbitUI as the default, right-click any .torrent file → Open With → qbitUI → &quot;Always Open With&quot;.
                     </div>
-                  ) : (
-                    <div className="text-xs text-gray-500 shrink-0 mt-0.5 italic">Install-time</div>
+                  )}
+                  {!isMac && isElectron && (
+                    <div className="flex items-start gap-1.5 mt-2 text-xs text-gray-500">
+                      <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                      File association is managed by the installer on this platform.
+                    </div>
                   )}
                 </div>
-              ))}
+                {isMac ? (
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Label
+                      htmlFor="handler-torrent"
+                      className="text-xs text-gray-400 cursor-pointer select-none"
+                    >
+                      {handlerLabel(torrent)}
+                    </Label>
+                    <Switch
+                      id="handler-torrent"
+                      checked={torrent.status === true}
+                      onCheckedChange={toggleTorrent}
+                      disabled={!isElectron || torrent.busy || torrent.status === null}
+                    />
+                  </div>
+                ) : (
+                  <div className="text-xs text-gray-500 shrink-0 mt-0.5 italic">Install-time</div>
+                )}
+              </div>
+
             </div>
           </section>
         </main>

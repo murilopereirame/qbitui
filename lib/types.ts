@@ -33,6 +33,9 @@ export type TorrentState =
   | "uploading"
   | "pausedDL"
   | "pausedUP"
+  // qBittorrent v5 renames: stopped = was paused in v4
+  | "stoppedDL"
+  | "stoppedUP"
   | "stalledDL"
   | "stalledUP"
   | "checkingDL"

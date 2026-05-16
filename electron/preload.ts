@@ -18,6 +18,10 @@ const api = {
   getLogs: () => ipcRenderer.invoke("logs:get") as Promise<string[]>,
   getMagnetHandlerStatus: () => ipcRenderer.invoke("handlers:magnet:status") as Promise<boolean>,
   setMagnetHandler: (enable: boolean) => ipcRenderer.invoke("handlers:magnet:set", enable) as Promise<boolean>,
+  getTorrentHandlerStatus: () => ipcRenderer.invoke("handlers:torrent:status") as Promise<boolean>,
+  setTorrentHandler: (enable: boolean) => ipcRenderer.invoke("handlers:torrent:set", enable) as Promise<boolean>,
+  consumePendingOpenUrl: () => ipcRenderer.invoke("pending:open-url:consume") as Promise<string | null>,
+  consumePendingOpenFile: () => ipcRenderer.invoke("pending:open-file:consume") as Promise<PendingFile | null>,
   onOpenUrl: (callback: (url: string) => void) => {
     const handler = (_event: IpcRendererEvent, url: string) => callback(url);
     ipcRenderer.on("open-url", handler);
