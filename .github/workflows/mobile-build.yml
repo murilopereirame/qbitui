@@ -65,7 +65,7 @@ jobs:
 
   build-ios:
     name: Build iOS IPA
-    runs-on: macos-14
+    runs-on: macos-15
 
     steps:
       - name: Checkout
@@ -83,9 +83,9 @@ jobs:
         working-directory: mobile
         run: npm install --legacy-peer-deps
 
-      - name: Build iOS IPA (local EAS build)
+      - name: Build iOS simulator app (local EAS build)
         working-directory: mobile
-        run: eas build --platform ios --profile preview --local --non-interactive --output ./build/qbitui.ipa
+        run: eas build --platform ios --profile preview --local --non-interactive --output ./build/qbitui.tar.gz
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
@@ -94,7 +94,7 @@ jobs:
         with:
           name: qbitui-ios
           retention-days: 7
-          path: mobile/build/qbitui.ipa
+          path: mobile/build/qbitui.tar.gz
           if-no-files-found: warn
 
   release:
@@ -116,7 +116,7 @@ jobs:
         with:
           files: |
             artifacts/**/*.apk
-            artifacts/**/*.ipa
+            artifacts/**/*.tar.gz
           generate_release_notes: true
           draft: false
           prerelease: ${{ contains(github.ref, '-beta') || contains(github.ref, '-alpha') || contains(github.ref, '-rc') }}
