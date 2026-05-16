@@ -1,5 +1,10 @@
 import { TorrentFilter, TorrentState } from './types';
 
+/** Converts a 0-1 progress value to a React Native DimensionValue percentage string. */
+export function toPercent(progress: number): `${number}%` {
+  return `${Math.round(progress * 100)}%`;
+}
+
 export function formatBytes(bytes: number, decimals = 2): string {
   if (bytes === 0) return '0 B';
   const k = 1024;
@@ -10,6 +15,8 @@ export function formatBytes(bytes: number, decimals = 2): string {
 }
 
 export const FILTER_STATES: Record<Exclude<TorrentFilter, 'all'>, TorrentState[]> = {
+  // Intentionally includes pausedDL/stoppedDL: a paused-in-progress download still belongs
+  // to the "downloading" category (matching the web app behaviour in components/layout/Sidebar.tsx).
   downloading: ['downloading', 'stalledDL', 'metaDL', 'forcedDL', 'queuedDL', 'allocating', 'pausedDL', 'stoppedDL'],
   seeding: ['uploading', 'stalledUP', 'forcedUP', 'queuedUP'],
   paused: ['pausedDL', 'pausedUP', 'stoppedDL', 'stoppedUP'],

@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useTorrentAction, useTorrents, useTransfer } from '@/hooks/use-qbit';
-import { formatBytes, formatETA, formatSpeed, FILTER_STATES, getStateColor, getStateLabel } from '@/lib/utils';
+import { formatBytes, formatETA, formatSpeed, FILTER_STATES, getStateColor, getStateLabel, toPercent } from '@/lib/utils';
 import { TorrentFilter } from '@/lib/types';
 import { useUIStore } from '@/store';
 
@@ -172,7 +172,7 @@ export default function TorrentsScreen() {
                 {/* Progress bar */}
                 <View style={styles.progressBg}>
                   <View
-                    style={[styles.progressFill, { width: `${(t.progress * 100).toFixed(1)}%` as `${number}%` }]}
+                    style={[styles.progressFill, { width: toPercent(t.progress) }]}
                   />
                 </View>
 

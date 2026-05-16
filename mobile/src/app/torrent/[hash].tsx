@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useTorrentDetails, useTorrents } from '@/hooks/use-qbit';
-import { formatBytes, formatDate, formatETA, formatRatio, formatSpeed } from '@/lib/utils';
+import { formatBytes, formatDate, formatETA, formatRatio, formatSpeed, toPercent } from '@/lib/utils';
 
 type Tab = 'properties' | 'trackers' | 'files';
 
@@ -132,7 +132,7 @@ export default function TorrentDetailsScreen() {
                 <View
                   style={[
                     styles.progressFill,
-                    { width: `${(file.progress * 100).toFixed(1)}%` as `${number}%` },
+                    { width: toPercent(file.progress) },
                   ]}
                 />
               </View>
