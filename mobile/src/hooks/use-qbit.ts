@@ -105,19 +105,23 @@ export function useTorrentAction() {
 
   const getOptimisticState = (state: Torrent['state'], progress: number, action: TorrentAction) => {
     if (action === 'pause') {
+      if (state === 'pausedUP' || state === 'pausedDL' || state === 'stoppedUP' || state === 'stoppedDL') {
+        return state;
+      }
       const shouldPauseAsUpload =
         progress >= 1 ||
         state === 'uploading' ||
         state === 'stalledUP' ||
         state === 'forcedUP' ||
-        state === 'queuedUP' ||
-        state === 'pausedUP' ||
-        state === 'stoppedUP';
+        state === 'queuedUP';
       return shouldPauseAsUpload ? 'pausedUP' : 'pausedDL';
     }
     if (action === 'resume') {
-      const shouldResumeAsUpload = progress >= 1 || state === 'pausedUP' || state === 'stoppedUP';
-      return shouldResumeAsUpload ? 'uploading' : 'downloading';
+      if (state === 'stoppedUP') return 'queuedUP';
+      if (state === 'stoppedDL') return 'queuedDL';
+      if (state === 'pausedUP') return 'uploading';
+      if (state === 'pausedDL') return 'downloading';
+      return progress >= 1 ? 'uploading' : 'downloading';
     }
     return state;
   };

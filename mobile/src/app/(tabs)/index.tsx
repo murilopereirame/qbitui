@@ -23,7 +23,7 @@ import { useUIStore } from '@/store';
 const FILTERS: { key: TorrentFilter; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'downloading', label: 'Downloading' },
-  { key: 'seeding', label: 'Uploading' },
+  { key: 'seeding', label: 'Seeding' },
   { key: 'paused', label: 'Paused' },
   { key: 'completed', label: 'Completed' },
   { key: 'error', label: 'Error' },
