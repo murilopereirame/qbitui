@@ -117,11 +117,9 @@ export function useTorrentAction() {
       return shouldPauseAsUpload ? 'pausedUP' : 'pausedDL';
     }
     if (action === 'resume') {
-      if (state === 'stoppedUP') return 'queuedUP';
-      if (state === 'stoppedDL') return 'queuedDL';
-      if (state === 'pausedUP') return 'uploading';
-      if (state === 'pausedDL') return 'downloading';
-      return progress >= 1 ? 'uploading' : 'downloading';
+      if (state === 'stoppedUP' || state === 'pausedUP') return 'queuedUP';
+      if (state === 'stoppedDL' || state === 'pausedDL') return 'queuedDL';
+      return progress >= 1 ? 'queuedUP' : 'queuedDL';
     }
     return state;
   };
@@ -150,12 +148,9 @@ export function useTorrentAction() {
           (current ?? []).map((torrent) => {
             if (!hashes.has(torrent.hash)) return torrent;
             const nextState = getOptimisticState(torrent.state, torrent.progress, variables.action);
-            const isPaused = variables.action === 'pause';
             return {
               ...torrent,
               state: nextState,
-              dlspeed: isPaused ? 0 : torrent.dlspeed,
-              upspeed: isPaused ? 0 : torrent.upspeed,
             };
           })
         );

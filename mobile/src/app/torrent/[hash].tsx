@@ -28,12 +28,15 @@ export default function TorrentDetailsScreen() {
 
   const { properties, trackers, files } = useTorrentDetails(hash);
   const { mutate: setFilePriority, isPending: isSettingFilePriority } = useSetTorrentFilePriority();
+  const [pendingFileIndex, setPendingFileIndex] = useState<number | null>(null);
 
   function updateFilePriority(file: TorrentFile, priority: number) {
     if (!hash || file.priority === priority) return;
+    setPendingFileIndex(file.index);
     setFilePriority(
       { hash, fileIds: [file.index], priority },
       {
+        onSettled: () => setPendingFileIndex(null),
         onError: (error) => {
           Alert.alert('Error', error instanceof Error ? error.message : 'Failed to change file priority');
         },
@@ -146,15 +149,16 @@ export default function TorrentDetailsScreen() {
               <View style={styles.filePriorityRow}>
                 {FILE_PRIORITIES.map((option) => {
                   const isActive = file.priority === option.value;
+                  const isCurrentFileUpdating = isSettingFilePriority && pendingFileIndex === file.index;
                   return (
                     <Pressable
                       key={`${file.index}-${option.value}`}
                       style={[
                         styles.filePriorityButton,
                         isActive && styles.filePriorityButtonActive,
-                        isSettingFilePriority && styles.filePriorityButtonDisabled,
+                        isCurrentFileUpdating && styles.filePriorityButtonDisabled,
                       ]}
-                      disabled={isSettingFilePriority}
+                      disabled={isCurrentFileUpdating}
                       onPress={() => updateFilePriority(file, option.value)}>
                       <Text style={[styles.filePriorityText, isActive && styles.filePriorityTextActive]}>
                         {option.label}
