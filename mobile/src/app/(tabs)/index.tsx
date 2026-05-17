@@ -99,21 +99,24 @@ export default function TorrentsScreen() {
       </View>
 
       {/* Filter tabs */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterRow}>
-        {FILTERS.map(({ key, label }) => (
-          <Pressable
-            key={key}
-            onPress={() => setFilter(key)}
-            style={[styles.filterChip, filter === key && styles.filterChipActive]}>
-            <Text style={[styles.filterLabel, filter === key && styles.filterLabelActive]}>
-              {label}
-            </Text>
-          </Pressable>
-        ))}
-      </ScrollView>
+      <View style={styles.filterWrap}>
+        <ScrollView
+          horizontal
+          style={styles.filterScroll}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterRow}>
+          {FILTERS.map(({ key, label }) => (
+            <Pressable
+              key={key}
+              onPress={() => setFilter(key)}
+              style={[styles.filterChip, filter === key && styles.filterChipActive]}>
+              <Text style={[styles.filterLabel, filter === key && styles.filterLabelActive]}>
+                {label}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      </View>
 
       {/* Count */}
       <View style={styles.countRow}>
@@ -238,7 +241,12 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
   },
-  filterRow: { paddingHorizontal: 12, paddingVertical: 8, gap: 8, alignItems: 'center' },
+  filterWrap: {
+    minHeight: 48,
+    justifyContent: 'center',
+  },
+  filterScroll: { flexGrow: 0 },
+  filterRow: { paddingHorizontal: 12, paddingVertical: 6, gap: 8, alignItems: 'center' },
   filterChip: {
     paddingHorizontal: 12,
     paddingVertical: 6,

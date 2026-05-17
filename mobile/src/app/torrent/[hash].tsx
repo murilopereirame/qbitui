@@ -2,6 +2,7 @@ import { useLocalSearchParams, useNavigation } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Pressable,
   ScrollView,
@@ -11,8 +12,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useTorrentDetails, useTorrents } from '@/hooks/use-qbit';
+import { useSetTorrentFilePriority, useTorrentDetails, useTorrents } from '@/hooks/use-qbit';
 import { formatBytes, formatDate, formatETA, formatRatio, formatSpeed, toPercent } from '@/lib/utils';
+import { TorrentFile } from '@/lib/types';
 
 type Tab = 'properties' | 'trackers' | 'files';
 
@@ -25,6 +27,19 @@ export default function TorrentDetailsScreen() {
   const torrent = torrents?.find((t) => t.hash === hash);
 
   const { properties, trackers, files } = useTorrentDetails(hash);
+  const { mutate: setFilePriority, isPending: isSettingFilePriority } = useSetTorrentFilePriority();
+
+  function updateFilePriority(file: TorrentFile, priority: number) {
+    if (!hash || file.priority === priority) return;
+    setFilePriority(
+      { hash, fileIds: [file.index], priority },
+      {
+        onError: (error) => {
+          Alert.alert('Error', error instanceof Error ? error.message : 'Failed to change file priority');
+        },
+      }
+    );
+  }
 
   useEffect(() => {
     if (torrent?.name) {
@@ -128,6 +143,26 @@ export default function TorrentDetailsScreen() {
                 <Text style={styles.metaText}>{formatBytes(file.size)}</Text>
                 <Text style={styles.metaText}>{(file.progress * 100).toFixed(1)}%</Text>
               </View>
+              <View style={styles.filePriorityRow}>
+                {FILE_PRIORITIES.map((option) => {
+                  const isActive = file.priority === option.value;
+                  return (
+                    <Pressable
+                      key={`${file.index}-${option.value}`}
+                      style={[
+                        styles.filePriorityButton,
+                        isActive && styles.filePriorityButtonActive,
+                        isSettingFilePriority && styles.filePriorityButtonDisabled,
+                      ]}
+                      disabled={isSettingFilePriority}
+                      onPress={() => updateFilePriority(file, option.value)}>
+                      <Text style={[styles.filePriorityText, isActive && styles.filePriorityTextActive]}>
+                        {option.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
               <View style={styles.progressBg}>
                 <View
                   style={[
@@ -143,6 +178,13 @@ export default function TorrentDetailsScreen() {
     </SafeAreaView>
   );
 }
+
+const FILE_PRIORITIES = [
+  { value: 0, label: 'Skip' },
+  { value: 1, label: 'Normal' },
+  { value: 6, label: 'High' },
+  { value: 7, label: 'Max' },
+];
 
 function PropRow({ label, value }: { label: string; value: string }) {
   return (
@@ -209,6 +251,29 @@ const styles = StyleSheet.create({
   },
   fileName: { color: '#e2e8f0', fontSize: 13 },
   fileMeta: { flexDirection: 'row', gap: 12 },
+  filePriorityRow: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+    marginTop: 4,
+  },
+  filePriorityButton: {
+    borderWidth: 1,
+    borderColor: '#374151',
+    backgroundColor: '#111827',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  filePriorityButtonActive: {
+    borderColor: '#3b82f6',
+    backgroundColor: '#1d4ed8',
+  },
+  filePriorityButtonDisabled: {
+    opacity: 0.6,
+  },
+  filePriorityText: { color: '#9ca3af', fontSize: 12, fontWeight: '500' },
+  filePriorityTextActive: { color: '#bfdbfe' },
   progressBg: {
     height: 3,
     backgroundColor: '#1f2937',

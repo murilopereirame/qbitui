@@ -161,6 +161,19 @@ export class QBitAPI {
     return this.fetchJson<TorrentFile[]>(`/api/v2/torrents/files?${params}`);
   }
 
+  async setFilePriority(hash: string, fileIds: number[], priority: number): Promise<void> {
+    const form = new FormData();
+    form.append('hash', hash);
+    form.append('id', fileIds.join('|'));
+    form.append('priority', String(priority));
+    const res = await fetch(this.url('/api/v2/torrents/filePrio'), {
+      method: 'POST',
+      headers: this.headers,
+      body: form,
+    });
+    if (!res.ok) throw new Error(`Failed to change file priority: ${res.status}`);
+  }
+
   private async torrentAction(path: string, hashes: string[]): Promise<void> {
     const form = new FormData();
     form.append('hashes', hashes.join('|'));
