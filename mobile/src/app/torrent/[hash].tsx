@@ -28,15 +28,21 @@ export default function TorrentDetailsScreen() {
 
   const { properties, trackers, files } = useTorrentDetails(hash);
   const { mutate: setFilePriority, isPending: isSettingFilePriority } = useSetTorrentFilePriority();
-  const [pendingFileIndex, setPendingFileIndex] = useState<number | null>(null);
+  const [pendingFileIndexes, setPendingFileIndexes] = useState<Set<number>>(new Set());
 
   function updateFilePriority(file: TorrentFile, priority: number) {
     if (!hash || file.priority === priority) return;
-    setPendingFileIndex(file.index);
+    setPendingFileIndexes((prev) => new Set(prev).add(file.index));
     setFilePriority(
       { hash, fileIds: [file.index], priority },
       {
-        onSettled: () => setPendingFileIndex(null),
+        onSettled: () => {
+          setPendingFileIndexes((prev) => {
+            const next = new Set(prev);
+            next.delete(file.index);
+            return next;
+          });
+        },
         onError: (error) => {
           Alert.alert('Error', error instanceof Error ? error.message : 'Failed to change file priority');
         },
@@ -149,7 +155,8 @@ export default function TorrentDetailsScreen() {
               <View style={styles.filePriorityRow}>
                 {FILE_PRIORITIES.map((option) => {
                   const isActive = file.priority === option.value;
-                  const isCurrentFileUpdating = isSettingFilePriority && pendingFileIndex === file.index;
+                  const isCurrentFileUpdating =
+                    isSettingFilePriority && pendingFileIndexes.has(file.index);
                   return (
                     <Pressable
                       key={`${file.index}-${option.value}`}
