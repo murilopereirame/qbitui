@@ -7,6 +7,12 @@ import {
   TorrentFile,
 } from './types';
 
+type FormDataFileValue = {
+  uri: string;
+  name: string;
+  type: string;
+};
+
 export class QBitAPI {
   private readonly safeHost: string;
 
@@ -59,12 +65,32 @@ export class QBitAPI {
     const form = new FormData();
     form.append('urls', urls.join('\n'));
     this.applyOptions(form, options);
+    await this.submitTorrentsForm(form);
+  }
+
+  async addTorrentFile(
+    fileUri: string,
+    fileName: string,
+    options: AddTorrentOptions = {}
+  ): Promise<void> {
+    const form = new FormData();
+    const file: FormDataFileValue = {
+      uri: fileUri,
+      name: fileName,
+      type: 'application/x-bittorrent',
+    };
+    form.append('torrents', file as unknown as Blob);
+    this.applyOptions(form, options);
+    await this.submitTorrentsForm(form);
+  }
+
+  private async submitTorrentsForm(form: FormData): Promise<void> {
     const res = await fetch(this.url('/api/v2/torrents/add'), {
       method: 'POST',
       headers: this.headers,
       body: form,
     });
-    if (!res.ok) throw new Error('Failed to add magnet link');
+    if (!res.ok) throw new Error('Failed to add torrent');
     const text = await res.text();
     if (text !== 'Ok.') throw new Error(`qBittorrent error: ${text}`);
   }
@@ -133,6 +159,19 @@ export class QBitAPI {
   async getTorrentFiles(hash: string): Promise<TorrentFile[]> {
     const params = new URLSearchParams({ hash });
     return this.fetchJson<TorrentFile[]>(`/api/v2/torrents/files?${params}`);
+  }
+
+  async setFilePriority(hash: string, fileIds: number[], priority: number): Promise<void> {
+    const form = new FormData();
+    form.append('hash', hash);
+    form.append('id', fileIds.join('|'));
+    form.append('priority', String(priority));
+    const res = await fetch(this.url('/api/v2/torrents/filePrio'), {
+      method: 'POST',
+      headers: this.headers,
+      body: form,
+    });
+    if (!res.ok) throw new Error(`Failed to change file priority: ${res.status}`);
   }
 
   private async torrentAction(path: string, hashes: string[]): Promise<void> {

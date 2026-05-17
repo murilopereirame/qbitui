@@ -5,6 +5,12 @@ import { Torrent, TorrentAction, AddTorrentOptions } from '@/lib/types';
 import { FILTER_STATES } from '@/lib/utils';
 import { useAuthStore, useUIStore } from '@/store';
 
+type AddTorrentPayload =
+  | { type: 'magnet'; urls: string[]; options: AddTorrentOptions }
+  | { type: 'file'; fileUri: string; fileName: string; options: AddTorrentOptions };
+type TorrentActionPayload = { action: TorrentAction; hashes: string[]; deleteFiles?: boolean };
+type FilePriorityPayload = { hash: string; fileIds: number[]; priority: number };
+
 function useApi(): QBitAPI | null {
   const creds = useAuthStore((s) => s.credentials);
   if (!creds) return null;
@@ -97,8 +103,29 @@ export function useTorrentAction() {
   const api = useApi();
   const queryClient = useQueryClient();
 
+  const getOptimisticState = (state: Torrent['state'], progress: number, action: TorrentAction) => {
+    if (action === 'pause') {
+      if (state === 'pausedUP' || state === 'pausedDL' || state === 'stoppedUP' || state === 'stoppedDL') {
+        return state;
+      }
+      const shouldPauseAsUpload =
+        progress >= 1 ||
+        state === 'uploading' ||
+        state === 'stalledUP' ||
+        state === 'forcedUP' ||
+        state === 'queuedUP';
+      return shouldPauseAsUpload ? 'pausedUP' : 'pausedDL';
+    }
+    if (action === 'resume') {
+      if (state === 'stoppedUP' || state === 'pausedUP') return 'queuedUP';
+      if (state === 'stoppedDL' || state === 'pausedDL') return 'queuedDL';
+      return progress >= 1 ? 'queuedUP' : 'queuedDL';
+    }
+    return state;
+  };
+
   return useMutation({
-    mutationFn: async ({ action, hashes, deleteFiles }: { action: TorrentAction; hashes: string[]; deleteFiles?: boolean }) => {
+    mutationFn: async ({ action, hashes, deleteFiles }: TorrentActionPayload) => {
       if (!api) throw new Error('Not connected');
       switch (action) {
         case 'pause': return api.pauseTorrents(hashes);
@@ -111,8 +138,34 @@ export function useTorrentAction() {
         default: throw new Error(`Unknown action: ${action}`);
       }
     },
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries({ queryKey: ['torrents'] });
+      const previousTorrents = queryClient.getQueryData<Torrent[]>(['torrents']);
+
+      if (previousTorrents && (variables.action === 'pause' || variables.action === 'resume')) {
+        const hashes = new Set(variables.hashes);
+        queryClient.setQueryData<Torrent[]>(['torrents'], (current) =>
+          (current ?? []).map((torrent) => {
+            if (!hashes.has(torrent.hash)) return torrent;
+            const nextState = getOptimisticState(torrent.state, torrent.progress, variables.action);
+            return {
+              ...torrent,
+              state: nextState,
+            };
+          })
+        );
+      }
+
+      return { previousTorrents };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previousTorrents) {
+        queryClient.setQueryData(['torrents'], context.previousTorrents);
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['torrents'] });
+      queryClient.refetchQueries({ queryKey: ['torrents'], type: 'active' });
     },
   });
 }
@@ -122,12 +175,33 @@ export function useAddTorrent() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ urls, options }: { urls: string[]; options: AddTorrentOptions }) => {
+    mutationFn: async (payload: AddTorrentPayload) => {
       if (!api) throw new Error('Not connected');
-      return api.addMagnet(urls, options);
+      if (payload.type === 'magnet') {
+        return api.addMagnet(payload.urls, payload.options);
+      }
+      return api.addTorrentFile(payload.fileUri, payload.fileName, payload.options);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['torrents'] });
+    },
+  });
+}
+
+export function useSetTorrentFilePriority() {
+  const api = useApi();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ hash, fileIds, priority }: FilePriorityPayload) => {
+      if (!api) throw new Error('Not connected');
+      return api.setFilePriority(hash, fileIds, priority);
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['torrent-files', variables.hash] });
+      queryClient.refetchQueries({ queryKey: ['torrent-files', variables.hash], type: 'active' });
+      queryClient.invalidateQueries({ queryKey: ['torrents'] });
+      queryClient.refetchQueries({ queryKey: ['torrents'], type: 'active' });
     },
   });
 }

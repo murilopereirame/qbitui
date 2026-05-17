@@ -1,6 +1,6 @@
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { Text } from 'react-native';
 
 export default function TabsLayout() {
   return (
@@ -18,8 +18,8 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Torrents',
-          tabBarIcon: ({ color }) => (
-            <TabIcon symbol="↓" color={color} />
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="download" size={size} color={color} />
           ),
         }}
       />
@@ -27,8 +27,8 @@ export default function TabsLayout() {
         name="add"
         options={{
           title: 'Add',
-          tabBarIcon: ({ color }) => (
-            <TabIcon symbol="+" color={color} />
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="add-circle-outline" size={size} color={color} />
           ),
         }}
       />
@@ -36,15 +36,11 @@ export default function TabsLayout() {
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({ color }) => (
-            <TabIcon symbol="⚙" color={color} />
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="settings" size={size} color={color} />
           ),
         }}
       />
     </Tabs>
   );
-}
-
-function TabIcon({ symbol, color }: { symbol: string; color: string }) {
-  return <Text style={{ color, fontSize: 18, fontWeight: '600' }}>{symbol}</Text>;
 }
