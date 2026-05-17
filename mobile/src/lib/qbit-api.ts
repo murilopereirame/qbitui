@@ -7,6 +7,12 @@ import {
   TorrentFile,
 } from './types';
 
+type FormDataFileValue = {
+  uri: string;
+  name: string;
+  type: string;
+};
+
 export class QBitAPI {
   private readonly safeHost: string;
 
@@ -68,7 +74,12 @@ export class QBitAPI {
     options: AddTorrentOptions = {}
   ): Promise<void> {
     const form = new FormData();
-    form.append('torrents', { uri: fileUri, name: fileName, type: 'application/x-bittorrent' } as unknown as Blob);
+    const file: FormDataFileValue = {
+      uri: fileUri,
+      name: fileName,
+      type: 'application/x-bittorrent',
+    };
+    form.append('torrents', file as unknown as Blob);
     this.applyOptions(form, options);
     await this.submitTorrentsForm(form);
   }

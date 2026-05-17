@@ -5,6 +5,10 @@ import { Torrent, TorrentAction, AddTorrentOptions } from '@/lib/types';
 import { FILTER_STATES } from '@/lib/utils';
 import { useAuthStore, useUIStore } from '@/store';
 
+type AddTorrentPayload =
+  | { type: 'magnet'; urls: string[]; options: AddTorrentOptions }
+  | { type: 'file'; fileUri: string; fileName: string; options: AddTorrentOptions };
+
 function useApi(): QBitAPI | null {
   const creds = useAuthStore((s) => s.credentials);
   if (!creds) return null;
@@ -122,11 +126,7 @@ export function useAddTorrent() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (
-      payload:
-        | { type: 'magnet'; urls: string[]; options: AddTorrentOptions }
-        | { type: 'file'; fileUri: string; fileName: string; options: AddTorrentOptions }
-    ) => {
+    mutationFn: async (payload: AddTorrentPayload) => {
       if (!api) throw new Error('Not connected');
       if (payload.type === 'magnet') {
         return api.addMagnet(payload.urls, payload.options);

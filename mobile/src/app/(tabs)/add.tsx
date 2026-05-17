@@ -43,6 +43,11 @@ export default function AddTorrentScreen() {
       });
       if (result.canceled) return;
       const asset = result.assets[0];
+      const isTorrentFile = asset.name.toLowerCase().endsWith('.torrent');
+      if (!isTorrentFile) {
+        Alert.alert('Invalid file', 'Please select a .torrent file');
+        return;
+      }
       setSelectedFile({ uri: asset.uri, name: asset.name });
     } catch {
       Alert.alert('Error', 'Failed to pick file');
