@@ -1,15 +1,12 @@
 import { create } from 'zustand';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Keychain from 'react-native-keychain';
 import { TorrentFilter } from '@/lib/types';
-import { qbitLogin } from '@/lib/qbit-api';
 
-const CREDS_KEY = 'qbitui:credentials';
+const KEYCHAIN_SERVICE = 'qbitui';
 
 export interface StoredCredentials {
   host: string;
-  username: string;
-  password: string;
-  sid: string;
+  apiToken: string;
 }
 
 interface AuthState {
@@ -18,7 +15,6 @@ interface AuthState {
   loadCredentials: () => Promise<void>;
   saveCredentials: (creds: StoredCredentials) => Promise<void>;
   clearCredentials: () => Promise<void>;
-  updateSid: (sid: string) => Promise<void>;
 }
 
 interface UIState {
@@ -32,15 +28,16 @@ interface UIState {
   setAddModalOpen: (open: boolean) => void;
 }
 
-export const useAuthStore = create<AuthState>((set, get) => ({
+export const useAuthStore = create<AuthState>((set) => ({
   credentials: null,
   isLoading: true,
 
   loadCredentials: async () => {
     try {
-      const raw = await AsyncStorage.getItem(CREDS_KEY);
-      if (raw) {
-        set({ credentials: JSON.parse(raw) as StoredCredentials, isLoading: false });
+      const result = await Keychain.getGenericPassword({ service: KEYCHAIN_SERVICE });
+      if (result) {
+        // username field stores host, password field stores apiToken
+        set({ credentials: { host: result.username, apiToken: result.password }, isLoading: false });
       } else {
         set({ credentials: null, isLoading: false });
       }
@@ -50,51 +47,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   saveCredentials: async (creds: StoredCredentials) => {
-    await AsyncStorage.setItem(CREDS_KEY, JSON.stringify(creds));
+    await Keychain.setGenericPassword(creds.host, creds.apiToken, { service: KEYCHAIN_SERVICE });
     set({ credentials: creds });
   },
 
   clearCredentials: async () => {
-    await AsyncStorage.removeItem(CREDS_KEY);
+    await Keychain.resetGenericPassword({ service: KEYCHAIN_SERVICE });
     set({ credentials: null });
   },
-
-  updateSid: async (sid: string) => {
-    const { credentials } = get();
-    if (!credentials) return;
-    const updated = { ...credentials, sid };
-    await AsyncStorage.setItem(CREDS_KEY, JSON.stringify(updated));
-    set({ credentials: updated });
-  },
 }));
-
-// Mutex to prevent concurrent session refresh attempts
-let pendingSessionRefresh: Promise<string | null> | null = null;
-
-export async function refreshSession(): Promise<string | null> {
-  if (pendingSessionRefresh) return pendingSessionRefresh;
-
-  pendingSessionRefresh = (async () => {
-    try {
-      const { credentials, updateSid, clearCredentials } = useAuthStore.getState();
-      if (!credentials?.password) {
-        await clearCredentials();
-        return null;
-      }
-      const { sid } = await qbitLogin(credentials.host, credentials.username, credentials.password);
-      await updateSid(sid);
-      return sid;
-    } catch {
-      const { clearCredentials } = useAuthStore.getState();
-      await clearCredentials();
-      return null;
-    } finally {
-      pendingSessionRefresh = null;
-    }
-  })();
-
-  return pendingSessionRefresh;
-}
 
 export const useUIStore = create<UIState>((set) => ({
   filter: 'all',

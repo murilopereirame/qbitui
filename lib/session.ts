@@ -2,8 +2,7 @@ import { SessionOptions } from "iron-session";
 
 export interface IronSessionData {
   host: string;
-  sid: string;
-  username: string;
+  apiToken: string;
 }
 
 function getSessionPassword(): string {

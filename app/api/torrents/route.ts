@@ -12,7 +12,7 @@ async function getSession() {
 export async function GET(req: NextRequest) {
   try {
     const session = await getSession();
-    if (!session.sid || !session.host) {
+    if (!session.apiToken || !session.host) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
     const category = url.searchParams.get("category") ?? undefined;
     const tag = url.searchParams.get("tag") ?? undefined;
 
-    const api = new QBitAPI(session.host, session.sid);
+    const api = new QBitAPI(session.host, session.apiToken);
     const torrents = await api.getTorrents(filter, category, tag);
     return NextResponse.json(torrents);
   } catch (err) {
@@ -33,11 +33,11 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const session = await getSession();
-    if (!session.sid || !session.host) {
+    if (!session.apiToken || !session.host) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const api = new QBitAPI(session.host, session.sid);
+    const api = new QBitAPI(session.host, session.apiToken);
     const contentType = req.headers.get("content-type") ?? "";
 
     if (contentType.includes("multipart/form-data")) {

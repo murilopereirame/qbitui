@@ -12,25 +12,24 @@ import {
   View,
 } from 'react-native';
 
-import { qbitLogin } from '@/lib/qbit-api';
+import { verifyApiToken } from '@/lib/qbit-api';
 import { useAuthStore } from '@/store';
 
 export default function LoginScreen() {
   const [host, setHost] = useState('http://localhost:8080');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [apiToken, setApiToken] = useState('');
   const [loading, setLoading] = useState(false);
   const saveCredentials = useAuthStore((s) => s.saveCredentials);
 
   async function handleConnect() {
-    if (!host.trim() || !username.trim()) {
-      Alert.alert('Missing fields', 'Please enter host and username.');
+    if (!host.trim() || !apiToken.trim()) {
+      Alert.alert('Missing fields', 'Please enter the host URL and API token.');
       return;
     }
     setLoading(true);
     try {
-      const { sid, host: validHost } = await qbitLogin(host.trim(), username.trim(), password);
-      await saveCredentials({ host: validHost, username: username.trim(), password, sid });
+      const resolvedHost = await verifyApiToken(host.trim(), apiToken.trim());
+      await saveCredentials({ host: resolvedHost, apiToken: apiToken.trim() });
     } catch (e) {
       Alert.alert('Connection failed', e instanceof Error ? e.message : 'Unknown error');
     } finally {
@@ -64,26 +63,20 @@ export default function LoginScreen() {
             keyboardType="url"
           />
 
-          <Text style={styles.label}>Username</Text>
+          <Text style={styles.label}>API Token</Text>
           <TextInput
             style={styles.input}
-            placeholder="admin"
+            placeholder="qbt_xxxxxxxxxxxxxxxxxxxxxxxxxxxx"
             placeholderTextColor="#555"
-            value={username}
-            onChangeText={setUsername}
+            value={apiToken}
+            onChangeText={setApiToken}
             autoCapitalize="none"
             autoCorrect={false}
-          />
-
-          <Text style={styles.label}>Password</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="••••••••"
-            placeholderTextColor="#555"
-            value={password}
-            onChangeText={setPassword}
             secureTextEntry
           />
+          <Text style={styles.hint}>
+            Find your API token in qBittorrent → Settings → Web UI → API Key
+          </Text>
 
           <Pressable
             style={[styles.button, loading && styles.buttonDisabled]}
@@ -146,6 +139,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     marginTop: 8,
+  },
+  hint: {
+    color: '#6b7280',
+    fontSize: 12,
+    marginTop: 2,
   },
   input: {
     backgroundColor: '#111827',

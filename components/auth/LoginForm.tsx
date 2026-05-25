@@ -11,24 +11,23 @@ import { AlertCircle, Loader2 } from "lucide-react";
 export function LoginForm() {
   const router = useRouter();
   const [host, setHost] = useState(process.env.NEXT_PUBLIC_DEFAULT_HOST ?? "http://localhost:8080");
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const [apiToken, setApiToken] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const attemptedAutoLogin = useRef(false);
 
-  const login = useCallback(async (hostValue: string, usernameValue: string, passwordValue: string, persist = true) => {
+  const login = useCallback(async (hostValue: string, apiTokenValue: string, persist = true) => {
     const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ host: hostValue, username: usernameValue, password: passwordValue }),
+      body: JSON.stringify({ host: hostValue, apiToken: apiTokenValue }),
     });
     const data = await res.json();
     if (!res.ok) {
       throw new Error(data.error ?? "Login failed");
     }
     if (persist) {
-      await window.qbitui?.setCredentials({ host: hostValue, username: usernameValue, password: passwordValue });
+      await window.qbitui?.setCredentials({ host: hostValue, apiToken: apiTokenValue });
     }
     router.push("/dashboard");
     router.refresh();
@@ -43,11 +42,10 @@ export function LoginForm() {
       const creds = await window.qbitui?.getCredentials();
       if (!creds || cancelled) return;
       setHost(creds.host);
-      setUsername(creds.username);
-      setPassword(creds.password);
+      setApiToken(creds.apiToken);
       setLoading(true);
       try {
-        await login(creds.host, creds.username, creds.password, false);
+        await login(creds.host, creds.apiToken, false);
       } catch {
         await window.qbitui?.clearCredentials();
         if (!cancelled) {
@@ -71,7 +69,7 @@ export function LoginForm() {
     setError("");
     setLoading(true);
     try {
-      await login(host, username, password);
+      await login(host, apiToken);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Network error — check your connection");
     } finally {
@@ -106,26 +104,18 @@ export function LoginForm() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="apiToken">API Token</Label>
               <Input
-                id="username"
-                type="text"
-                placeholder="admin"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
+                id="apiToken"
                 type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                placeholder="qbt_••••••••••••••••••••••••••••"
+                value={apiToken}
+                onChange={(e) => setApiToken(e.target.value)}
                 required
               />
+              <p className="text-xs text-muted-foreground">
+                Find your API token in qBittorrent → Settings → Web UI → API Key
+              </p>
             </div>
 
             {error && (

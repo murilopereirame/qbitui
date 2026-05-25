@@ -13,16 +13,14 @@ export class QBitAPI {
 
   constructor(
     host: string,
-    private sid: string
+    private apiToken: string
   ) {
-    // Re-validate the host from the session to satisfy static analysis:
-    // even though it was already validated at login time, we guard here too.
     this.safeHost = validateHost(host);
   }
 
   private get headers() {
     return {
-      Cookie: `SID=${this.sid}`,
+      Authorization: `Bearer ${this.apiToken}`,
       Referer: this.safeHost,
     };
   }
@@ -36,7 +34,7 @@ export class QBitAPI {
       const res = await fetch(this.url("/api/v2/app/version"), {
         headers: this.headers,
       });
-      return res.ok && res.status !== 403;
+      return res.ok;
     } catch {
       return false;
     }
@@ -118,7 +116,6 @@ export class QBitAPI {
   }
 
   async pauseTorrents(hashes: string[]): Promise<void> {
-    // qBittorrent v5 renamed /pause → /stop; try new endpoint first.
     await this.torrentActionWithFallback(
       "/api/v2/torrents/stop",
       "/api/v2/torrents/pause",
@@ -127,7 +124,6 @@ export class QBitAPI {
   }
 
   async resumeTorrents(hashes: string[]): Promise<void> {
-    // qBittorrent v5 renamed /resume → /start; try new endpoint first.
     await this.torrentActionWithFallback(
       "/api/v2/torrents/start",
       "/api/v2/torrents/resume",
@@ -224,7 +220,6 @@ export class QBitAPI {
     if (!res.ok) throw new Error(`Action failed: ${res.status}`);
   }
 
-  /** Tries `primaryPath` first; if qBittorrent returns 404 falls back to `fallbackPath`. */
   private async torrentActionWithFallback(primaryPath: string, fallbackPath: string, hashes: string[]): Promise<void> {
     const buildForm = () => {
       const form = new FormData();
@@ -271,39 +266,25 @@ export function validateHost(host: string): string {
   return parsed.origin;
 }
 
-export async function qbitLogin(
+export async function verifyApiToken(
   host: string,
-  username: string,
-  password: string
-): Promise<{ sid: string; host: string }> {
+  apiToken: string
+): Promise<string> {
   const safeHost = validateHost(host);
-  const form = new FormData();
-  form.append("username", username);
-  form.append("password", password);
-
   let lastNetworkError: Error | null = null;
-  for (const candidate of getLoginHostCandidates(safeHost)) {
+
+  for (const candidate of getHostCandidates(safeHost)) {
     try {
-      const res = await fetch(`${candidate}/api/v2/auth/login`, {
-        method: "POST",
-        headers: { Referer: candidate },
-        body: form,
+      const res = await fetch(`${candidate}/api/v2/app/version`, {
+        headers: {
+          Authorization: `Bearer ${apiToken}`,
+          Referer: candidate,
+        },
         signal: AbortSignal.timeout(10_000),
       });
-
-      if (!res.ok) {
-        throw new Error(`Login failed: HTTP ${res.status}`);
-      }
-
-      const text = await res.text();
-      if (text === "Fails.") throw new Error("Invalid username or password");
-      if (text.includes("banned")) throw new Error("IP address is banned");
-      if (text !== "Ok.") throw new Error(`Unexpected login response: ${text}`);
-
-      const setCookie = res.headers.get("set-cookie") ?? "";
-      const sidMatch = setCookie.match(/SID=([^;]+)/);
-      if (!sidMatch) throw new Error("No session cookie received from qBittorrent");
-      return { sid: sidMatch[1], host: candidate };
+      if (res.ok) return candidate;
+      if (res.status === 403) throw new Error("Invalid API token");
+      throw new Error(`qBittorrent returned HTTP ${res.status}`);
     } catch (error) {
       if (error instanceof Error && isRetriableNetworkError(error)) {
         lastNetworkError = error;
@@ -320,7 +301,7 @@ export async function qbitLogin(
   );
 }
 
-function getLoginHostCandidates(host: string): string[] {
+function getHostCandidates(host: string): string[] {
   const parsed = new URL(host);
   const normalizedHostname = parsed.hostname.replace(/^\[(.*)\]$/, "$1");
   const candidates = new Set<string>([parsed.origin]);

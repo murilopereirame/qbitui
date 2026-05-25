@@ -8,21 +8,21 @@ export async function GET() {
   const cookieStore = await cookies();
   const session = await getIronSession<IronSessionData>(cookieStore, sessionOptions);
 
-  if (!session.sid || !session.host) {
+  if (!session.apiToken || !session.host) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
   try {
-    const api = new QBitAPI(session.host, session.sid);
+    const api = new QBitAPI(session.host, session.apiToken);
     const alive = await api.verifyAuth();
 
     if (!alive) {
-      return NextResponse.json({ error: "Session expired" }, { status: 403 });
+      return NextResponse.json({ error: "Cannot reach qBittorrent server" }, { status: 502 });
     }
 
     return NextResponse.json({ alive: true });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Keepalive check failed";
+    const message = err instanceof Error ? err.message : "Connectivity check failed";
     return NextResponse.json({ error: message }, { status: 502 });
   }
 }

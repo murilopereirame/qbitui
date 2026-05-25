@@ -2,8 +2,7 @@ import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
 
 interface SavedCredentials {
   host: string;
-  username: string;
-  password: string;
+  apiToken: string;
 }
 
 interface PendingFile {
