@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useRef, useEffect } from "react";
+import { useColumnResize } from "@/hooks/useColumnResize";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -191,6 +192,9 @@ export function TorrentDetailsPanel() {
   );
   const { mutate: setPriority, isPending } = useSetTorrentFilePriority();
   const [selectedNodes, setSelectedNodes] = useState<Set<string>>(new Set());
+  const { widths: trackerWidths, startResize: startTrackerResize } = useColumnResize([50, 300, 80, 60, 60, 70, 90, 200]);
+  const { widths: peerWidths, startResize: startPeerResize } = useColumnResize([70, 120, 50, 80, 60, 100, 70, 80, 80, 90, 80, 60, 120]);
+  const { widths: contentWidths, startResize: startContentResize } = useColumnResize([300, 80, 70, 140, 80, 80]);
 
   // Resizable panel state
   const [panelHeight, setPanelHeight] = useState(320);
@@ -394,24 +398,34 @@ export function TorrentDetailsPanel() {
         </TabsContent>
 
         <TabsContent value="trackers" className="h-full overflow-auto">
-          <table className="w-full text-xs">
+          <table
+            className="text-xs"
+            style={{ tableLayout: "fixed", width: "100%", minWidth: trackerWidths.reduce((a, b) => a + b, 0) }}
+          >
+            <colgroup>
+              {trackerWidths.map((w, i) => <col key={i} style={{ width: w }} />)}
+            </colgroup>
             <thead className="text-gray-400 border-b border-white/10">
               <tr>
-                <th className="text-left py-1">Tier</th>
-                <th className="text-left py-1">URL</th>
-                <th className="text-right py-1">Status</th>
-                <th className="text-right py-1">Peers</th>
-                <th className="text-right py-1">Seeds</th>
-                <th className="text-right py-1">Leechers</th>
-                <th className="text-right py-1">Downloaded</th>
-                <th className="text-left py-1">Message</th>
+                {(["Tier", "URL", "Status", "Peers", "Seeds", "Leechers", "Downloaded", "Message"] as const).map((label, i) => (
+                  <th key={label} className={`py-1 relative select-none ${i >= 2 && i <= 6 ? "text-right" : "text-left"}`}>
+                    {label}
+                    {i < 7 && (
+                      <div
+                        className="absolute inset-y-0 right-0 w-3 cursor-col-resize hover:bg-blue-500/30 z-10"
+                        onMouseDown={(e) => startTrackerResize(i, e)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    )}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {(data.trackers ?? []).map((t) => (
                 <tr key={t.url} className="border-b border-white/5">
                   <td className="py-1">{t.tier}</td>
-                  <td className="py-1 truncate max-w-[20rem]" title={t.url}>{t.url}</td>
+                  <td className="py-1 truncate" title={t.url}>{t.url}</td>
                   <td className="py-1 text-right">{t.status}</td>
                   <td className="py-1 text-right">{t.num_peers}</td>
                   <td className="py-1 text-right">{t.num_seeds}</td>
@@ -425,40 +439,49 @@ export function TorrentDetailsPanel() {
         </TabsContent>
 
         <TabsContent value="peers" className="h-full overflow-auto">
-          <table className="w-full text-xs">
+          <table
+            className="text-xs"
+            style={{ tableLayout: "fixed", width: "100%", minWidth: peerWidths.reduce((a, b) => a + b, 0) }}
+          >
+            <colgroup>
+              {peerWidths.map((w, i) => <col key={i} style={{ width: w }} />)}
+            </colgroup>
             <thead className="text-gray-400 border-b border-white/10">
               <tr>
-                <th className="text-left py-1">Country</th>
-                <th className="text-left py-1">IP</th>
-                <th className="text-right py-1">Port</th>
-                <th className="text-left py-1">Connection</th>
-                <th className="text-left py-1">Flags</th>
-                <th className="text-left py-1">Client</th>
-                <th className="text-right py-1">Progress</th>
-                <th className="text-right py-1">DL</th>
-                <th className="text-right py-1">UL</th>
-                <th className="text-right py-1">Downloaded</th>
-                <th className="text-right py-1">Uploaded</th>
-                <th className="text-right py-1">Ratio</th>
-                <th className="text-left py-1">Files</th>
+                {([
+                  ["Country", false], ["IP", false], ["Port", true], ["Connection", false],
+                  ["Flags", false], ["Client", false], ["Progress", true], ["DL", true],
+                  ["UL", true], ["Downloaded", true], ["Uploaded", true], ["Ratio", true], ["Files", false],
+                ] as [string, boolean][]).map(([label, right], i) => (
+                  <th key={label} className={`py-1 relative select-none ${right ? "text-right" : "text-left"}`}>
+                    {label}
+                    {i < 12 && (
+                      <div
+                        className="absolute inset-y-0 right-0 w-3 cursor-col-resize hover:bg-blue-500/30 z-10"
+                        onMouseDown={(e) => startPeerResize(i, e)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    )}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {(data.peers ?? []).map((peer) => (
                 <tr key={`${peer.ip}:${peer.port}`} className="border-b border-white/5">
                   <td className="py-1">{peer.country || "—"}</td>
-                  <td className="py-1">{peer.ip}</td>
+                  <td className="py-1 truncate">{peer.ip}</td>
                   <td className="py-1 text-right">{peer.port}</td>
-                  <td className="py-1">{peer.connection || "—"}</td>
+                  <td className="py-1 truncate">{peer.connection || "—"}</td>
                   <td className="py-1">{peer.flags || "—"}</td>
-                  <td className="py-1">{peer.client || "—"}</td>
+                  <td className="py-1 truncate">{peer.client || "—"}</td>
                   <td className="py-1 text-right">{(peer.progress * 100).toFixed(1)}%</td>
                   <td className="py-1 text-right">{formatSpeed(peer.dl_speed)}</td>
                   <td className="py-1 text-right">{formatSpeed(peer.up_speed)}</td>
                   <td className="py-1 text-right">{formatBytes(peer.downloaded)}</td>
                   <td className="py-1 text-right">{formatBytes(peer.uploaded)}</td>
                   <td className="py-1 text-right">{formatRatio(calculateUploadedDownloadedRatio(peer.uploaded, peer.downloaded))}</td>
-                  <td className="py-1 truncate max-w-[10rem]" title={peer.files}>{peer.files || "—"}</td>
+                  <td className="py-1 truncate" title={peer.files}>{peer.files || "—"}</td>
                 </tr>
               ))}
             </tbody>
@@ -497,16 +520,32 @@ export function TorrentDetailsPanel() {
             </Button>
             <span className="text-xs text-gray-500 ml-auto">{selectedFileIds().length} files selected</span>
           </div>
-          <table className="w-full text-xs">
+          <table
+            className="text-xs"
+            style={{ tableLayout: "fixed", width: "100%", minWidth: 32 + contentWidths.reduce((a, b) => a + b, 0) }}
+          >
+            <colgroup>
+              <col style={{ width: 32 }} />
+              {contentWidths.map((w, i) => <col key={i} style={{ width: w }} />)}
+            </colgroup>
             <thead className="text-gray-400 border-b border-white/10">
               <tr>
-                <th className="text-left py-1 w-8"></th>
-                <th className="text-left py-1">Name</th>
-                <th className="text-right py-1">Total Size</th>
-                <th className="text-right py-1">Progress</th>
-                <th className="text-left py-1">Download Priority</th>
-                <th className="text-right py-1">Remaining</th>
-                <th className="text-right py-1">Availability</th>
+                <th className="text-left py-1" />
+                {([
+                  ["Name", false], ["Total Size", true], ["Progress", true],
+                  ["Download Priority", false], ["Remaining", true], ["Availability", true],
+                ] as [string, boolean][]).map(([label, right], i) => (
+                  <th key={label} className={`py-1 relative select-none ${right ? "text-right" : "text-left"}`}>
+                    {label}
+                    {i < 5 && (
+                      <div
+                        className="absolute inset-y-0 right-0 w-3 cursor-col-resize hover:bg-blue-500/30 z-10"
+                        onMouseDown={(e) => startContentResize(i, e)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    )}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>

@@ -9,26 +9,30 @@ import { SortField } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { ChevronUp, ChevronDown, Loader2, Play, Pause, Trash2, ChevronsUp, ChevronsDown, ArrowUp, ArrowDown } from "lucide-react";
 import { toast } from "sonner";
+import { useColumnResize } from "@/hooks/useColumnResize";
 
-const COLUMNS: { label: string; field?: SortField; className?: string }[] = [
-  { label: "#", field: "priority", className: "w-10 text-right" },
-  { label: "Name", field: "name", className: "min-w-[14rem]" },
-  { label: "State", field: "state", className: "w-28" },
-  { label: "%", field: "progress", className: "w-14 text-right" },
-  { label: "Size", field: "size", className: "w-20 text-right" },
-  { label: "DL", field: "dlspeed", className: "w-24 text-right" },
-  { label: "UL", field: "upspeed", className: "w-24 text-right" },
-  { label: "ETA", field: "eta", className: "w-20 text-right" },
-  { label: "Ratio", field: "ratio", className: "w-16 text-right" },
-  { label: "Seeds/Peers", field: "num_seeds", className: "w-24 text-right" },
-  { label: "Category", field: "category", className: "w-28" },
-  { label: "", className: "w-10" },
+const COLUMNS: { label: string; field?: SortField; align?: "right" }[] = [
+  { label: "#", field: "priority", align: "right" },
+  { label: "Name", field: "name" },
+  { label: "State", field: "state" },
+  { label: "%", field: "progress", align: "right" },
+  { label: "Size", field: "size", align: "right" },
+  { label: "DL", field: "dlspeed", align: "right" },
+  { label: "UL", field: "upspeed", align: "right" },
+  { label: "ETA", field: "eta", align: "right" },
+  { label: "Ratio", field: "ratio", align: "right" },
+  { label: "Seeds/Peers", field: "num_seeds", align: "right" },
+  { label: "Category", field: "category" },
+  { label: "" },
 ];
+
+const INITIAL_COL_WIDTHS = [40, 224, 112, 56, 80, 96, 96, 80, 64, 96, 112, 40];
 
 export function TorrentTable() {
   const { filteredTorrents, isLoading, isError, error } = useTorrents();
   const { sortField, sortDirection, toggleSort, selectedHashes, selectAll, clearSelection } = useUIStore();
   const { mutate: action } = useTorrentAction();
+  const { widths, startResize } = useColumnResize(INITIAL_COL_WIDTHS);
 
   const allSelected =
     filteredTorrents.length > 0 && filteredTorrents.every((t) => selectedHashes.has(t.hash));
@@ -63,6 +67,8 @@ export function TorrentTable() {
       </div>
     );
   }
+
+  const totalWidth = 32 + widths.reduce((a, b) => a + b, 0);
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -105,7 +111,14 @@ export function TorrentTable() {
 
       {/* Table */}
       <div className="flex-1 overflow-auto">
-        <table className="w-full text-sm table-fixed">
+        <table
+          className="text-sm"
+          style={{ tableLayout: "fixed", width: "100%", minWidth: totalWidth }}
+        >
+          <colgroup>
+            <col style={{ width: 32 }} />
+            {widths.map((w, i) => <col key={i} style={{ width: w }} />)}
+          </colgroup>
           <thead className="sticky top-0 bg-gray-950 z-10">
             <tr className="border-b border-white/10">
               {/* Select all */}
@@ -115,13 +128,13 @@ export function TorrentTable() {
                   onCheckedChange={toggleSelectAll}
                 />
               </th>
-              {COLUMNS.map(({ label, field, className }) => (
+              {COLUMNS.map(({ label, field, align }, i) => (
                 <th
                   key={label || "actions"}
                   className={cn(
-                    "px-2 py-2.5 text-left text-xs font-medium text-gray-400 select-none",
+                    "px-2 py-2.5 text-xs font-medium text-gray-400 select-none relative overflow-visible",
+                    align === "right" ? "text-right" : "text-left",
                     field && "cursor-pointer hover:text-white transition-colors",
-                    className
                   )}
                   onClick={() => field && toggleSort(field)}
                 >
@@ -133,6 +146,13 @@ export function TorrentTable() {
                         : <ChevronDown className="h-3 w-3" />
                     )}
                   </span>
+                  {i < COLUMNS.length - 1 && (
+                    <div
+                      className="absolute inset-y-0 right-0 w-3 cursor-col-resize hover:bg-blue-500/30 z-20"
+                      onMouseDown={(e) => startResize(i, e)}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  )}
                 </th>
               ))}
             </tr>
