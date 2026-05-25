@@ -237,14 +237,20 @@ export function validateHost(host: string): string {
 
 export async function verifyApiToken(host: string, apiToken: string): Promise<string> {
   const safeHost = validateHost(host);
-  const res = await fetch(`${safeHost}/api/v2/app/version`, {
-    headers: {
-      Authorization: `Bearer ${apiToken}`,
-      Referer: safeHost,
-    },
-    signal: AbortSignal.timeout(10_000),
-  });
-  if (res.status === 403) throw new Error('Invalid API token');
-  if (!res.ok) throw new Error(`Could not reach qBittorrent: HTTP ${res.status}`);
-  return safeHost;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10_000);
+  try {
+    const res = await fetch(`${safeHost}/api/v2/app/version`, {
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+        Referer: safeHost,
+      },
+      signal: controller.signal,
+    });
+    if (res.status === 403) throw new Error('Invalid API token');
+    if (!res.ok) throw new Error(`Could not reach qBittorrent: HTTP ${res.status}`);
+    return safeHost;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
