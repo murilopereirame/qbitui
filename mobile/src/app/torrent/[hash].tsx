@@ -22,6 +22,7 @@ export default function TorrentDetailsScreen() {
   const { hash } = useLocalSearchParams<{ hash: string }>();
   const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState<Tab>('properties');
+  const [selectedFileIndexes, setSelectedFileIndexes] = useState<Set<number>>(new Set());
 
   const { data: torrents } = useTorrents();
   const torrent = torrents?.find((t) => t.hash === hash);
@@ -29,6 +30,32 @@ export default function TorrentDetailsScreen() {
   const { properties, trackers, files } = useTorrentDetails(hash);
   const { mutate: setFilePriority, isPending: isSettingFilePriority } = useSetTorrentFilePriority();
   const [pendingFileIndexes, setPendingFileIndexes] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    if (activeTab !== 'files') setSelectedFileIndexes(new Set());
+  }, [activeTab]);
+
+  function toggleFileSelection(index: number) {
+    setSelectedFileIndexes((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (!files.data) return;
+    if (selectedFileIndexes.size === files.data.length) {
+      setSelectedFileIndexes(new Set());
+    } else {
+      setSelectedFileIndexes(new Set(files.data.map((f) => f.index)));
+    }
+  }
+
+  function clearFileSelection() {
+    setSelectedFileIndexes(new Set());
+  }
 
   function updateFilePriority(file: TorrentFile, priority: number) {
     if (!hash || file.priority === priority) return;
@@ -50,6 +77,20 @@ export default function TorrentDetailsScreen() {
     );
   }
 
+  function bulkSetPriority(priority: number) {
+    if (!hash || selectedFileIndexes.size === 0) return;
+    const fileIds = Array.from(selectedFileIndexes);
+    setFilePriority(
+      { hash, fileIds, priority },
+      {
+        onSuccess: () => clearFileSelection(),
+        onError: (error) => {
+          Alert.alert('Error', error instanceof Error ? error.message : 'Failed to change file priority');
+        },
+      }
+    );
+  }
+
   useEffect(() => {
     if (torrent?.name) {
       navigation.setOptions({ title: torrent.name });
@@ -57,6 +98,8 @@ export default function TorrentDetailsScreen() {
   }, [torrent?.name, navigation]);
 
   if (!hash) return null;
+
+  const allSelected = !!files.data?.length && selectedFileIndexes.size === files.data.length;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
@@ -134,57 +177,103 @@ export default function TorrentDetailsScreen() {
       )}
 
       {activeTab === 'files' && (
-        <FlatList
-          data={files.data ?? []}
-          keyExtractor={(f) => String(f.index)}
-          contentContainerStyle={styles.tabContent}
-          ListEmptyComponent={
-            files.isLoading ? (
-              <ActivityIndicator color="#3b82f6" style={{ margin: 24 }} />
-            ) : (
-              <Text style={styles.noData}>No files</Text>
-            )
-          }
-          renderItem={({ item: file }) => (
-            <View style={styles.fileRow}>
-              <Text style={styles.fileName} numberOfLines={2}>{file.name}</Text>
-              <View style={styles.fileMeta}>
-                <Text style={styles.metaText}>{formatBytes(file.size)}</Text>
-                <Text style={styles.metaText}>{(file.progress * 100).toFixed(1)}%</Text>
+        <>
+          <FlatList
+            style={styles.fileList}
+            data={files.data ?? []}
+            keyExtractor={(f) => String(f.index)}
+            contentContainerStyle={styles.tabContent}
+            ListHeaderComponent={
+              files.data && files.data.length > 0 ? (
+                <Pressable style={styles.selectAllRow} onPress={toggleSelectAll}>
+                  <View style={[styles.checkbox, allSelected && styles.checkboxSelected]}>
+                    {allSelected && <Text style={styles.checkmark}>✓</Text>}
+                  </View>
+                  <Text style={styles.selectAllText}>
+                    {allSelected ? 'Deselect All' : 'Select All'}
+                  </Text>
+                </Pressable>
+              ) : null
+            }
+            ListEmptyComponent={
+              files.isLoading ? (
+                <ActivityIndicator color="#3b82f6" style={{ margin: 24 }} />
+              ) : (
+                <Text style={styles.noData}>No files</Text>
+              )
+            }
+            renderItem={({ item: file }) => {
+              const isSelected = selectedFileIndexes.has(file.index);
+              const isCurrentFileUpdating =
+                isSettingFilePriority && pendingFileIndexes.has(file.index);
+              return (
+                <View style={styles.fileRow}>
+                  <Pressable
+                    style={styles.checkboxWrap}
+                    onPress={() => toggleFileSelection(file.index)}>
+                    <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                      {isSelected && <Text style={styles.checkmark}>✓</Text>}
+                    </View>
+                  </Pressable>
+                  <View style={styles.fileRowContent}>
+                    <Text style={styles.fileName} numberOfLines={2}>{file.name}</Text>
+                    <View style={styles.fileMeta}>
+                      <Text style={styles.metaText}>{formatBytes(file.size)}</Text>
+                      <Text style={styles.metaText}>{(file.progress * 100).toFixed(1)}%</Text>
+                    </View>
+                    <View style={styles.filePriorityRow}>
+                      {FILE_PRIORITIES.map((option) => {
+                        const isActive = file.priority === option.value;
+                        return (
+                          <Pressable
+                            key={`${file.index}-${option.value}`}
+                            style={[
+                              styles.filePriorityButton,
+                              isActive && styles.filePriorityButtonActive,
+                              isCurrentFileUpdating && styles.filePriorityButtonDisabled,
+                            ]}
+                            disabled={isCurrentFileUpdating}
+                            onPress={() => updateFilePriority(file, option.value)}>
+                            <Text style={[styles.filePriorityText, isActive && styles.filePriorityTextActive]}>
+                              {option.label}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                    <View style={styles.progressBg}>
+                      <View
+                        style={[
+                          styles.progressFill,
+                          { width: toPercent(file.progress) },
+                        ]}
+                      />
+                    </View>
+                  </View>
+                </View>
+              );
+            }}
+          />
+          {selectedFileIndexes.size > 0 && (
+            <View style={styles.bulkBar}>
+              <Text style={styles.bulkCount}>{selectedFileIndexes.size} selected</Text>
+              <View style={styles.bulkActions}>
+                {FILE_PRIORITIES.map((option) => (
+                  <Pressable
+                    key={option.value}
+                    style={[styles.bulkPriorityButton, isSettingFilePriority && styles.bulkPriorityButtonDisabled]}
+                    onPress={() => bulkSetPriority(option.value)}
+                    disabled={isSettingFilePriority}>
+                    <Text style={styles.bulkPriorityText}>{option.label}</Text>
+                  </Pressable>
+                ))}
               </View>
-              <View style={styles.filePriorityRow}>
-                {FILE_PRIORITIES.map((option) => {
-                  const isActive = file.priority === option.value;
-                  const isCurrentFileUpdating =
-                    isSettingFilePriority && pendingFileIndexes.has(file.index);
-                  return (
-                    <Pressable
-                      key={`${file.index}-${option.value}`}
-                      style={[
-                        styles.filePriorityButton,
-                        isActive && styles.filePriorityButtonActive,
-                        isCurrentFileUpdating && styles.filePriorityButtonDisabled,
-                      ]}
-                      disabled={isCurrentFileUpdating}
-                      onPress={() => updateFilePriority(file, option.value)}>
-                      <Text style={[styles.filePriorityText, isActive && styles.filePriorityTextActive]}>
-                        {option.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-              <View style={styles.progressBg}>
-                <View
-                  style={[
-                    styles.progressFill,
-                    { width: toPercent(file.progress) },
-                  ]}
-                />
-              </View>
+              <Pressable onPress={clearFileSelection} style={styles.bulkClear}>
+                <Text style={styles.bulkClearText}>✕</Text>
+              </Pressable>
             </View>
           )}
-        />
+        </>
       )}
     </SafeAreaView>
   );
@@ -253,11 +342,58 @@ const styles = StyleSheet.create({
   trackerMeta: { flexDirection: 'row', gap: 12 },
   trackerMsg: { color: '#9ca3af', fontStyle: 'italic' },
   metaText: { color: '#9ca3af', fontSize: 12 },
-  fileRow: {
+  fileList: { flex: 1 },
+  selectAllRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#1f2937',
+    gap: 10,
+  },
+  selectAllText: {
+    color: '#3b82f6',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  fileRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingLeft: 12,
+    paddingRight: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1f2937',
+  },
+  checkboxWrap: {
+    paddingTop: 2,
+    paddingRight: 10,
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#374151',
+    backgroundColor: '#111827',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxSelected: {
+    borderColor: '#3b82f6',
+    backgroundColor: '#2563eb',
+  },
+  checkmark: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+    lineHeight: 14,
+  },
+  fileRowContent: {
+    flex: 1,
     gap: 4,
   },
   fileName: { color: '#e2e8f0', fontSize: 13 },
@@ -293,4 +429,50 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   progressFill: { height: '100%', backgroundColor: '#3b82f6', borderRadius: 2 },
+  bulkBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: '#111827',
+    borderTopWidth: 1,
+    borderTopColor: '#374151',
+    gap: 8,
+  },
+  bulkCount: {
+    color: '#9ca3af',
+    fontSize: 12,
+    fontWeight: '600',
+    minWidth: 64,
+  },
+  bulkActions: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 6,
+  },
+  bulkPriorityButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#3b82f6',
+    backgroundColor: '#1e3a5f',
+    borderRadius: 8,
+    paddingVertical: 7,
+    alignItems: 'center',
+  },
+  bulkPriorityButtonDisabled: {
+    opacity: 0.5,
+  },
+  bulkPriorityText: {
+    color: '#93c5fd',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  bulkClear: {
+    padding: 6,
+  },
+  bulkClearText: {
+    color: '#6b7280',
+    fontSize: 16,
+    fontWeight: '700',
+  },
 });

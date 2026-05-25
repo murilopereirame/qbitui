@@ -30,7 +30,7 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       const { sid, host: validHost } = await qbitLogin(host.trim(), username.trim(), password);
-      await saveCredentials({ host: validHost, username: username.trim(), sid });
+      await saveCredentials({ host: validHost, username: username.trim(), password, sid });
     } catch (e) {
       Alert.alert('Connection failed', e instanceof Error ? e.message : 'Unknown error');
     } finally {

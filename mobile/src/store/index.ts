@@ -1,12 +1,14 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TorrentFilter } from '@/lib/types';
+import { qbitLogin } from '@/lib/qbit-api';
 
 const CREDS_KEY = 'qbitui:credentials';
 
 export interface StoredCredentials {
   host: string;
   username: string;
+  password: string;
   sid: string;
 }
 
@@ -16,6 +18,7 @@ interface AuthState {
   loadCredentials: () => Promise<void>;
   saveCredentials: (creds: StoredCredentials) => Promise<void>;
   clearCredentials: () => Promise<void>;
+  updateSid: (sid: string) => Promise<void>;
 }
 
 interface UIState {
@@ -29,7 +32,7 @@ interface UIState {
   setAddModalOpen: (open: boolean) => void;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   credentials: null,
   isLoading: true,
 
@@ -55,7 +58,43 @@ export const useAuthStore = create<AuthState>((set) => ({
     await AsyncStorage.removeItem(CREDS_KEY);
     set({ credentials: null });
   },
+
+  updateSid: async (sid: string) => {
+    const { credentials } = get();
+    if (!credentials) return;
+    const updated = { ...credentials, sid };
+    await AsyncStorage.setItem(CREDS_KEY, JSON.stringify(updated));
+    set({ credentials: updated });
+  },
 }));
+
+// Mutex to prevent concurrent session refresh attempts
+let pendingSessionRefresh: Promise<string | null> | null = null;
+
+export async function refreshSession(): Promise<string | null> {
+  if (pendingSessionRefresh) return pendingSessionRefresh;
+
+  pendingSessionRefresh = (async () => {
+    try {
+      const { credentials, updateSid, clearCredentials } = useAuthStore.getState();
+      if (!credentials?.password) {
+        await clearCredentials();
+        return null;
+      }
+      const { sid } = await qbitLogin(credentials.host, credentials.username, credentials.password);
+      await updateSid(sid);
+      return sid;
+    } catch {
+      const { clearCredentials } = useAuthStore.getState();
+      await clearCredentials();
+      return null;
+    } finally {
+      pendingSessionRefresh = null;
+    }
+  })();
+
+  return pendingSessionRefresh;
+}
 
 export const useUIStore = create<UIState>((set) => ({
   filter: 'all',

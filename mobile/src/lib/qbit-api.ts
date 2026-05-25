@@ -7,6 +7,13 @@ import {
   TorrentFile,
 } from './types';
 
+export class SessionExpiredError extends Error {
+  constructor() {
+    super('Session expired');
+    this.name = 'SessionExpiredError';
+  }
+}
+
 type FormDataFileValue = {
   uri: string;
   name: string;
@@ -49,6 +56,7 @@ export class QBitAPI {
     const res = await fetch(this.url('/api/v2/torrents/info'), {
       headers: this.headers,
     });
+    if (res.status === 403) throw new SessionExpiredError();
     if (!res.ok) throw new Error(`Failed to fetch torrents: ${res.status}`);
     return res.json();
   }
@@ -57,6 +65,7 @@ export class QBitAPI {
     const res = await fetch(this.url('/api/v2/transfer/info'), {
       headers: this.headers,
     });
+    if (res.status === 403) throw new SessionExpiredError();
     if (!res.ok) throw new Error('Failed to fetch transfer info');
     return res.json();
   }
@@ -90,6 +99,7 @@ export class QBitAPI {
       headers: this.headers,
       body: form,
     });
+    if (res.status === 403) throw new SessionExpiredError();
     if (!res.ok) throw new Error('Failed to add torrent');
     const text = await res.text();
     if (text !== 'Ok.') throw new Error(`qBittorrent error: ${text}`);
@@ -127,6 +137,7 @@ export class QBitAPI {
       headers: this.headers,
       body: form,
     });
+    if (res.status === 403) throw new SessionExpiredError();
     if (!res.ok) throw new Error('Failed to delete torrents');
   }
 
@@ -171,6 +182,7 @@ export class QBitAPI {
       headers: this.headers,
       body: form,
     });
+    if (res.status === 403) throw new SessionExpiredError();
     if (!res.ok) throw new Error(`Failed to change file priority: ${res.status}`);
   }
 
@@ -182,6 +194,7 @@ export class QBitAPI {
       headers: this.headers,
       body: form,
     });
+    if (res.status === 403) throw new SessionExpiredError();
     if (!res.ok) throw new Error(`Action failed: ${res.status}`);
   }
 
@@ -202,12 +215,14 @@ export class QBitAPI {
       body: buildForm(),
     });
 
+    if (res.status === 403) throw new SessionExpiredError();
     if (res.status === 404) {
       res = await fetch(this.url(fallbackPath), {
         method: 'POST',
         headers: this.headers,
         body: buildForm(),
       });
+      if (res.status === 403) throw new SessionExpiredError();
     }
 
     if (!res.ok) throw new Error(`Action failed: ${res.status}`);
@@ -217,6 +232,7 @@ export class QBitAPI {
     const res = await fetch(this.url(path), {
       headers: this.headers,
     });
+    if (res.status === 403) throw new SessionExpiredError();
     if (!res.ok) throw new Error(`Failed to fetch ${path}: ${res.status}`);
     return res.json() as Promise<T>;
   }
