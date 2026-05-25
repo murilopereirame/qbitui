@@ -18,14 +18,14 @@ export class QBitAPI {
 
   constructor(
     host: string,
-    private sid: string
+    private apiToken: string
   ) {
     this.safeHost = validateHost(host);
   }
 
   private get headers() {
     return {
-      Cookie: `SID=${this.sid}`,
+      Authorization: `Bearer ${this.apiToken}`,
       Referer: this.safeHost,
     };
   }
@@ -39,7 +39,7 @@ export class QBitAPI {
       const res = await fetch(this.url('/api/v2/app/version'), {
         headers: this.headers,
       });
-      return res.ok && res.status !== 403;
+      return res.ok;
     } catch {
       return false;
     }
@@ -235,33 +235,16 @@ export function validateHost(host: string): string {
   return parsed.origin;
 }
 
-export async function qbitLogin(
-  host: string,
-  username: string,
-  password: string
-): Promise<{ sid: string; host: string }> {
+export async function verifyApiToken(host: string, apiToken: string): Promise<string> {
   const safeHost = validateHost(host);
-  const form = new FormData();
-  form.append('username', username);
-  form.append('password', password);
-
-  const res = await fetch(`${safeHost}/api/v2/auth/login`, {
-    method: 'POST',
-    headers: { Referer: safeHost },
-    body: form,
+  const res = await fetch(`${safeHost}/api/v2/app/version`, {
+    headers: {
+      Authorization: `Bearer ${apiToken}`,
+      Referer: safeHost,
+    },
+    signal: AbortSignal.timeout(10_000),
   });
-
-  if (!res.ok) {
-    throw new Error(`Login failed: HTTP ${res.status}`);
-  }
-
-  const text = await res.text();
-  if (text === 'Fails.') throw new Error('Invalid username or password');
-  if (text.includes('banned')) throw new Error('IP address is banned');
-  if (text !== 'Ok.') throw new Error(`Unexpected login response: ${text}`);
-
-  const setCookie = res.headers.get('set-cookie') ?? '';
-  const sidMatch = setCookie.match(/SID=([^;]+)/);
-  if (!sidMatch) throw new Error('No session cookie received from qBittorrent');
-  return { sid: sidMatch[1], host: safeHost };
+  if (res.status === 403) throw new Error('Invalid API token');
+  if (!res.ok) throw new Error(`Could not reach qBittorrent: HTTP ${res.status}`);
+  return safeHost;
 }

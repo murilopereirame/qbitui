@@ -1,13 +1,12 @@
 import { create } from 'zustand';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Keychain from 'react-native-keychain';
 import { TorrentFilter } from '@/lib/types';
 
-const CREDS_KEY = 'qbitui:credentials';
+const KEYCHAIN_SERVICE = 'qbitui';
 
 export interface StoredCredentials {
   host: string;
-  username: string;
-  sid: string;
+  apiToken: string;
 }
 
 interface AuthState {
@@ -35,9 +34,10 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   loadCredentials: async () => {
     try {
-      const raw = await AsyncStorage.getItem(CREDS_KEY);
-      if (raw) {
-        set({ credentials: JSON.parse(raw) as StoredCredentials, isLoading: false });
+      const result = await Keychain.getGenericPassword({ service: KEYCHAIN_SERVICE });
+      if (result) {
+        // username field stores host, password field stores apiToken
+        set({ credentials: { host: result.username, apiToken: result.password }, isLoading: false });
       } else {
         set({ credentials: null, isLoading: false });
       }
@@ -47,12 +47,12 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   saveCredentials: async (creds: StoredCredentials) => {
-    await AsyncStorage.setItem(CREDS_KEY, JSON.stringify(creds));
+    await Keychain.setGenericPassword(creds.host, creds.apiToken, { service: KEYCHAIN_SERVICE });
     set({ credentials: creds });
   },
 
   clearCredentials: async () => {
-    await AsyncStorage.removeItem(CREDS_KEY);
+    await Keychain.resetGenericPassword({ service: KEYCHAIN_SERVICE });
     set({ credentials: null });
   },
 }));

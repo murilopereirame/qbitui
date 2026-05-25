@@ -14,7 +14,7 @@ type FilePriorityPayload = { hash: string; fileIds: number[]; priority: number }
 function useApi(): QBitAPI | null {
   const creds = useAuthStore((s) => s.credentials);
   if (!creds) return null;
-  return new QBitAPI(creds.host, creds.sid);
+  return new QBitAPI(creds.host, creds.apiToken);
 }
 
 export function useTorrents() {
@@ -148,10 +148,7 @@ export function useTorrentAction() {
           (current ?? []).map((torrent) => {
             if (!hashes.has(torrent.hash)) return torrent;
             const nextState = getOptimisticState(torrent.state, torrent.progress, variables.action);
-            return {
-              ...torrent,
-              state: nextState,
-            };
+            return { ...torrent, state: nextState };
           })
         );
       }

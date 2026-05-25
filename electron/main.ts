@@ -1,4 +1,5 @@
-import { app, BrowserWindow, shell, ipcMain, safeStorage, Menu } from "electron";
+import { app, BrowserWindow, shell, ipcMain, Menu } from "electron";
+import keytar from "keytar";
 import { utilityProcess, UtilityProcess } from "electron";
 import path from "path";
 import http from "http";
@@ -56,8 +57,44 @@ function appendLog(chunk: Buffer | string): void {
 
 interface SavedCredentials {
   host: string;
-  username: string;
-  password: string;
+  apiToken: string;
+}
+
+// ---------------------------------------------------------------------------
+// Credential storage (keytar — system keychain)
+// ---------------------------------------------------------------------------
+
+const KEYTAR_SERVICE = "qbitui";
+const KEYTAR_ACCOUNT = "credentials";
+
+async function readCredentials(): Promise<SavedCredentials | null> {
+  try {
+    const json = await keytar.getPassword(KEYTAR_SERVICE, KEYTAR_ACCOUNT);
+    if (!json) return null;
+    const parsed = JSON.parse(json) as SavedCredentials;
+    if (!parsed.host || !parsed.apiToken) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+async function writeCredentials(credentials: SavedCredentials): Promise<boolean> {
+  try {
+    await keytar.setPassword(KEYTAR_SERVICE, KEYTAR_ACCOUNT, JSON.stringify(credentials));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function clearCredentials(): Promise<boolean> {
+  try {
+    await keytar.deletePassword(KEYTAR_SERVICE, KEYTAR_ACCOUNT);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -78,48 +115,6 @@ function getServerScriptPath(): string {
     "standalone",
     "server.js"
   );
-}
-
-function getCredentialsPath(): string {
-  return path.join(app.getPath("userData"), "credentials.bin");
-}
-
-function readCredentials(): SavedCredentials | null {
-  try {
-    if (!safeStorage.isEncryptionAvailable()) return null;
-    const file = getCredentialsPath();
-    if (!fs.existsSync(file)) return null;
-    const encrypted = Buffer.from(fs.readFileSync(file, "utf8"), "base64");
-    const decrypted = safeStorage.decryptString(encrypted);
-    const parsed = JSON.parse(decrypted) as SavedCredentials;
-    if (!parsed.host || !parsed.username || !parsed.password) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-function writeCredentials(credentials: SavedCredentials): boolean {
-  try {
-    if (!safeStorage.isEncryptionAvailable()) return false;
-    const payload = JSON.stringify(credentials);
-    const encrypted = safeStorage.encryptString(payload);
-    fs.writeFileSync(getCredentialsPath(), encrypted.toString("base64"), "utf8");
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function clearCredentials(): boolean {
-  try {
-    const file = getCredentialsPath();
-    if (fs.existsSync(file)) fs.unlinkSync(file);
-    return true;
-  } catch (error) {
-    console.error("Failed to clear saved credentials:", error);
-    return false;
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -473,17 +468,9 @@ app.on("open-file", (event, filePath) => {
 // ---------------------------------------------------------------------------
 
 app.whenReady().then(async () => {
-  ipcMain.handle("credentials:get", () => {
-    return readCredentials();
-  });
-
-  ipcMain.handle("credentials:set", (_event, credentials: SavedCredentials) => {
-    return writeCredentials(credentials);
-  });
-
-  ipcMain.handle("credentials:clear", () => {
-    return clearCredentials();
-  });
+  ipcMain.handle("credentials:get", () => readCredentials());
+  ipcMain.handle("credentials:set", (_event, credentials: SavedCredentials) => writeCredentials(credentials));
+  ipcMain.handle("credentials:clear", () => clearCredentials());
 
   ipcMain.handle("logs:get", () => serverLogs.slice());
 

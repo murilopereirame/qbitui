@@ -1,7 +1,6 @@
 export interface SavedCredentials {
   host: string;
-  username: string;
-  password: string;
+  apiToken: string;
 }
 
 export interface PendingFile {

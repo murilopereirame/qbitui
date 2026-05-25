@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   try {
     const cookieStore = await cookies();
     const session = await getIronSession<IronSessionData>(cookieStore, sessionOptions);
-    if (!session.sid || !session.host) {
+    if (!session.apiToken || !session.host) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "At least one valid section is required" }, { status: 400 });
     }
 
-    const api = new QBitAPI(session.host, session.sid);
+    const api = new QBitAPI(session.host, session.apiToken);
     const details: PartialTorrentDetails = {};
 
     await Promise.all(

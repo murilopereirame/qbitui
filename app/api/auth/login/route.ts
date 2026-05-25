@@ -2,30 +2,27 @@ import { NextRequest, NextResponse } from "next/server";
 import { getIronSession } from "iron-session";
 import { cookies } from "next/headers";
 import { sessionOptions, IronSessionData } from "@/lib/session";
-import { qbitLogin, validateHost } from "@/lib/qbit-api";
+import { verifyApiToken } from "@/lib/qbit-api";
 
 export async function POST(req: NextRequest) {
   try {
-    const { host, username, password } = await req.json();
+    const { host, apiToken } = await req.json();
 
-    if (!host || !username || !password) {
-      return NextResponse.json({ error: "Host, username and password are required" }, { status: 400 });
+    if (!host || !apiToken) {
+      return NextResponse.json({ error: "Host and API token are required" }, { status: 400 });
     }
 
-    const normalizedHost = validateHost(host);
-
-    const { sid, host: resolvedHost } = await qbitLogin(normalizedHost, username, password);
+    const resolvedHost = await verifyApiToken(host, apiToken);
 
     const cookieStore = await cookies();
     const session = await getIronSession<IronSessionData>(cookieStore, sessionOptions);
     session.host = resolvedHost;
-    session.sid = sid;
-    session.username = username;
+    session.apiToken = apiToken;
     await session.save();
 
-    return NextResponse.json({ success: true, username });
+    return NextResponse.json({ success: true });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Login failed";
+    const message = err instanceof Error ? err.message : "Connection failed";
     return NextResponse.json({ error: message }, { status: 401 });
   }
 }

@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
   try {
     const cookieStore = await cookies();
     const session = await getIronSession<IronSessionData>(cookieStore, sessionOptions);
-    if (!session.sid || !session.host) {
+    if (!session.apiToken || !session.host) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Action and hashes are required" }, { status: 400 });
     }
 
-    const api = new QBitAPI(session.host, session.sid);
+    const api = new QBitAPI(session.host, session.apiToken);
 
     switch (action) {
       case "pause":
