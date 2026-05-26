@@ -6,10 +6,23 @@ import React, { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
 import { useAuthStore } from '@/store';
+import { logger } from '@/lib/logger';
 
 SplashScreen.preventAutoHideAsync();
 
-const queryClient = new QueryClient();
+logger.info('App started', 'app');
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error) => {
+        const msg = error instanceof Error ? error.message : String(error);
+        logger.warn(`Query failed (attempt ${failureCount + 1}): ${msg}`, 'query');
+        return failureCount < 2;
+      },
+    },
+  },
+});
 
 function AuthGuard() {
   const router = useRouter();
@@ -55,6 +68,10 @@ export default function RootLayout() {
           <Stack.Screen
             name="torrent/[hash]"
             options={{ headerShown: true, title: 'Torrent Details', presentation: 'card' }}
+          />
+          <Stack.Screen
+            name="logs"
+            options={{ headerShown: true, title: 'App Logs', presentation: 'card' }}
           />
         </Stack>
       </ThemeProvider>

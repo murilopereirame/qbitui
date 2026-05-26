@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Torrent } from "@/lib/types";
 import {
   formatBytes,
@@ -24,6 +25,7 @@ import { MoreHorizontal, Play, Pause, Trash2, RefreshCw, Radio } from "lucide-re
 import { useTorrentAction } from "@/hooks/useTorrents";
 import { useUIStore } from "@/store";
 import { toast } from "sonner";
+import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 
 interface TorrentRowProps {
   torrent: Torrent;
@@ -32,6 +34,7 @@ interface TorrentRowProps {
 export function TorrentRow({ torrent }: TorrentRowProps) {
   const { selectedHashes, toggleSelection, activeTorrentHash, setActiveTorrentHash } = useUIStore();
   const { mutate: action } = useTorrentAction();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const isSelected = selectedHashes.has(torrent.hash);
   const isActive = activeTorrentHash === torrent.hash;
 
@@ -160,19 +163,24 @@ export function TorrentRow({ torrent }: TorrentRowProps) {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={() => doAction("delete", false)}
+              onClick={(e) => { e.stopPropagation(); setDeleteDialogOpen(true); }}
               className="text-red-400 focus:text-red-400"
             >
               <Trash2 className="mr-2 h-4 w-4" /> Delete
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => doAction("delete", true)}
-              className="text-red-400 focus:text-red-400"
-            >
-              <Trash2 className="mr-2 h-4 w-4" /> Delete + Files
-            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        <DeleteConfirmationDialog
+          open={deleteDialogOpen}
+          torrentCount={1}
+          torrentName={torrent.name}
+          onClose={() => setDeleteDialogOpen(false)}
+          onConfirm={(deleteFiles) => {
+            setDeleteDialogOpen(false);
+            doAction("delete", deleteFiles);
+          }}
+        />
       </td>
     </tr>
   );

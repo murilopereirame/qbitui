@@ -45,14 +45,23 @@ let pendingOpenFile: PendingFile | null = null;
 const MAX_LOG_LINES = 2_000;
 const serverLogs: string[] = [];
 
-function appendLog(chunk: Buffer | string): void {
+function timestamp(): string {
+  return new Date().toISOString().replace("T", " ").slice(0, 23);
+}
+
+function appendLog(chunk: Buffer | string, prefix = ""): void {
   const text = typeof chunk === "string" ? chunk : chunk.toString("utf8");
+  const ts = timestamp();
   for (const line of text.split("\n")) {
-    if (line.trim()) serverLogs.push(line);
+    if (line.trim()) serverLogs.push(`[${ts}]${prefix} ${line}`);
   }
   if (serverLogs.length > MAX_LOG_LINES) {
     serverLogs.splice(0, serverLogs.length - MAX_LOG_LINES);
   }
+}
+
+function logElectron(message: string): void {
+  appendLog(message, "[electron]");
 }
 
 interface SavedCredentials {
@@ -170,16 +179,22 @@ async function startEmbeddedServer(): Promise<void> {
     stdio: "pipe",
   });
 
+  logElectron(`Starting embedded Next.js server (port ${PORT})`);
+
   serverProcess.on("exit", (code) => {
     if (code !== 0) {
       console.error(`Embedded Next.js server exited with code ${code}`);
+      logElectron(`Server exited with code ${code}`);
+    } else {
+      logElectron("Server exited cleanly");
     }
   });
 
-  serverProcess.stdout?.on("data", appendLog);
-  serverProcess.stderr?.on("data", appendLog);
+  serverProcess.stdout?.on("data", (chunk) => appendLog(chunk, "[server]"));
+  serverProcess.stderr?.on("data", (chunk) => appendLog(chunk, "[server]"));
 
   await waitForServer(`http://127.0.0.1:${PORT}`);
+  logElectron("Embedded server is ready");
 }
 
 // ---------------------------------------------------------------------------
@@ -468,9 +483,17 @@ app.on("open-file", (event, filePath) => {
 // ---------------------------------------------------------------------------
 
 app.whenReady().then(async () => {
+  logElectron(`App ready — pid=${process.pid} mode=${isDev ? "dev" : "production"} platform=${process.platform}`);
+
   ipcMain.handle("credentials:get", () => readCredentials());
-  ipcMain.handle("credentials:set", (_event, credentials: SavedCredentials) => writeCredentials(credentials));
-  ipcMain.handle("credentials:clear", () => clearCredentials());
+  ipcMain.handle("credentials:set", (_event, credentials: SavedCredentials) => {
+    logElectron(`Credentials saved for host: ${credentials.host}`);
+    return writeCredentials(credentials);
+  });
+  ipcMain.handle("credentials:clear", () => {
+    logElectron("Credentials cleared");
+    return clearCredentials();
+  });
 
   ipcMain.handle("logs:get", () => serverLogs.slice());
 
@@ -506,12 +529,15 @@ app.whenReady().then(async () => {
     try {
       await startEmbeddedServer();
     } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
       console.error("Failed to start embedded server:", err);
+      logElectron(`Failed to start embedded server: ${msg}`);
       app.quit();
       return;
     }
   }
 
+  logElectron("Creating main window");
   createWindow();
 
   // Windows / Linux cold-start: when the OS launches the app for a file
@@ -531,6 +557,7 @@ app.whenReady().then(async () => {
 });
 
 app.on("window-all-closed", () => {
+  logElectron("All windows closed");
   serverProcess?.kill();
   if (process.platform !== "darwin") {
     app.quit();
@@ -538,5 +565,6 @@ app.on("window-all-closed", () => {
 });
 
 app.on("will-quit", () => {
+  logElectron("App quitting");
   serverProcess?.kill();
 });

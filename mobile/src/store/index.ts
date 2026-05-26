@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import * as Keychain from 'react-native-keychain';
 import { TorrentFilter } from '@/lib/types';
+import { logger } from '@/lib/logger';
 
 const KEYCHAIN_SERVICE = 'qbitui';
 
@@ -36,23 +37,28 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const result = await Keychain.getGenericPassword({ service: KEYCHAIN_SERVICE });
       if (result) {
+        logger.info(`Credentials loaded for host: ${result.username}`, 'store');
         // username field stores host, password field stores apiToken
         set({ credentials: { host: result.username, apiToken: result.password }, isLoading: false });
       } else {
+        logger.info('No saved credentials found', 'store');
         set({ credentials: null, isLoading: false });
       }
-    } catch {
+    } catch (e) {
+      logger.error(`Failed to load credentials: ${e instanceof Error ? e.message : String(e)}`, 'store');
       set({ credentials: null, isLoading: false });
     }
   },
 
   saveCredentials: async (creds: StoredCredentials) => {
     await Keychain.setGenericPassword(creds.host, creds.apiToken, { service: KEYCHAIN_SERVICE });
+    logger.info(`Credentials saved for host: ${creds.host}`, 'store');
     set({ credentials: creds });
   },
 
   clearCredentials: async () => {
     await Keychain.resetGenericPassword({ service: KEYCHAIN_SERVICE });
+    logger.info('Credentials cleared', 'store');
     set({ credentials: null });
   },
 }));
