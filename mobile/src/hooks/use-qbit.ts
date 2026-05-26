@@ -4,6 +4,7 @@ import { QBitAPI } from '@/lib/qbit-api';
 import { Torrent, TorrentAction, AddTorrentOptions } from '@/lib/types';
 import { FILTER_STATES } from '@/lib/utils';
 import { useAuthStore, useUIStore } from '@/store';
+import { logger } from '@/lib/logger';
 
 type AddTorrentPayload =
   | { type: 'magnet'; urls: string[]; options: AddTorrentOptions }
@@ -127,6 +128,7 @@ export function useTorrentAction() {
   return useMutation({
     mutationFn: async ({ action, hashes, deleteFiles }: TorrentActionPayload) => {
       if (!api) throw new Error('Not connected');
+      logger.info(`Torrent action: ${action} on ${hashes.length} torrent(s)${action === 'delete' ? ` deleteFiles=${deleteFiles ?? false}` : ''}`, 'use-qbit');
       switch (action) {
         case 'pause': return api.pauseTorrents(hashes);
         case 'resume': return api.resumeTorrents(hashes);
@@ -155,7 +157,9 @@ export function useTorrentAction() {
 
       return { previousTorrents };
     },
-    onError: (_error, _variables, context) => {
+    onError: (error, variables, context) => {
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error(`Action "${variables.action}" failed: ${msg}`, 'use-qbit');
       if (context?.previousTorrents) {
         queryClient.setQueryData(['torrents'], context.previousTorrents);
       }
@@ -174,13 +178,20 @@ export function useAddTorrent() {
   return useMutation({
     mutationFn: async (payload: AddTorrentPayload) => {
       if (!api) throw new Error('Not connected');
+      const label = payload.type === 'magnet' ? `magnet (${payload.urls.length})` : `file: ${payload.fileName}`;
+      logger.info(`Adding torrent: ${label}`, 'use-qbit');
       if (payload.type === 'magnet') {
         return api.addMagnet(payload.urls, payload.options);
       }
       return api.addTorrentFile(payload.fileUri, payload.fileName, payload.options);
     },
     onSuccess: () => {
+      logger.info('Torrent added successfully', 'use-qbit');
       queryClient.invalidateQueries({ queryKey: ['torrents'] });
+    },
+    onError: (error) => {
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error(`Failed to add torrent: ${msg}`, 'use-qbit');
     },
   });
 }

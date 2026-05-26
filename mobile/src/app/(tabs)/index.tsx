@@ -3,7 +3,6 @@ import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Pressable,
   RefreshControl,
@@ -19,6 +18,7 @@ import { useTorrentAction, useTorrents, useTransfer } from '@/hooks/use-qbit';
 import { formatBytes, formatETA, formatSpeed, FILTER_STATES, getStateColor, getStateLabel, toPercent } from '@/lib/utils';
 import { TorrentFilter } from '@/lib/types';
 import { useUIStore } from '@/store';
+import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
 
 const FILTERS: { key: TorrentFilter; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -47,6 +47,7 @@ export default function TorrentsScreen() {
   const { data: transfer } = useTransfer();
   const { mutate: doAction } = useTorrentAction();
   const [refreshing, setRefreshing] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ hash: string; name: string } | null>(null);
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -55,23 +56,7 @@ export default function TorrentsScreen() {
   }
 
   function confirmDelete(hash: string, name: string) {
-    Alert.alert(
-      'Delete Torrent',
-      `Remove "${name}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => doAction({ action: 'delete', hashes: [hash], deleteFiles: false }),
-        },
-        {
-          text: 'Delete + Files',
-          style: 'destructive',
-          onPress: () => doAction({ action: 'delete', hashes: [hash], deleteFiles: true }),
-        },
-      ]
-    );
+    setDeleteTarget({ hash, name });
   }
 
   return (
@@ -211,6 +196,18 @@ export default function TorrentsScreen() {
           }}
         />
       )}
+
+      <DeleteConfirmModal
+        visible={!!deleteTarget}
+        torrentName={deleteTarget?.name ?? ''}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={(deleteFiles) => {
+          if (deleteTarget) {
+            doAction({ action: 'delete', hashes: [deleteTarget.hash], deleteFiles });
+          }
+          setDeleteTarget(null);
+        }}
+      />
     </SafeAreaView>
   );
 }

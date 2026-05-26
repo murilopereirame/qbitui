@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import React from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -5,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store';
 
 export default function SettingsScreen() {
+  const router = useRouter();
   const { credentials, clearCredentials } = useAuthStore();
 
   function handleDisconnect() {
@@ -32,10 +34,19 @@ export default function SettingsScreen() {
             <Text style={styles.sectionTitle}>Connection</Text>
             <View style={styles.card}>
               <Row label="Host" value={credentials.host} />
-              <Row label="Username" value={credentials.username} />
             </View>
           </View>
         )}
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Diagnostics</Text>
+          <View style={styles.card}>
+            <Pressable style={styles.navRow} onPress={() => router.push('/logs')}>
+              <Text style={styles.navLabel}>View App Logs</Text>
+              <Text style={styles.navArrow}>›</Text>
+            </Pressable>
+          </View>
+        </View>
 
         <View style={styles.section}>
           <Pressable style={styles.dangerBtn} onPress={handleDisconnect}>
@@ -83,6 +94,15 @@ const styles = StyleSheet.create({
     borderColor: '#1f2937',
     overflow: 'hidden',
   },
+  navRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  navLabel: { color: '#e2e8f0', fontSize: 14 },
+  navArrow: { color: '#6b7280', fontSize: 20 },
   dangerBtn: {
     backgroundColor: '#450a0a',
     borderRadius: 10,

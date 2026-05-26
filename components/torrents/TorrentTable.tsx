@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { useTorrents, useTorrentAction } from "@/hooks/useTorrents";
 import { useUIStore } from "@/store";
 import { TorrentRow } from "./TorrentRow";
+import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { SortField } from "@/lib/types";
@@ -33,6 +35,7 @@ export function TorrentTable() {
   const { sortField, sortDirection, toggleSort, selectedHashes, selectAll, clearSelection } = useUIStore();
   const { mutate: action } = useTorrentAction();
   const { widths, startResize } = useColumnResize(INITIAL_COL_WIDTHS);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
   const allSelected =
     filteredTorrents.length > 0 && filteredTorrents.every((t) => selectedHashes.has(t.hash));
@@ -45,14 +48,28 @@ export function TorrentTable() {
     }
   }
 
-  function bulkAction(act: "pause" | "resume" | "delete" | "topPrio" | "increasePrio" | "decreasePrio" | "bottomPrio") {
+  function bulkAction(act: "pause" | "resume" | "topPrio" | "increasePrio" | "decreasePrio" | "bottomPrio") {
     const hashes = Array.from(selectedHashes);
     action(
-      { action: act, hashes, deleteFiles: act === "delete" ? false : undefined },
+      { action: act, hashes },
       {
         onSuccess: () => {
           clearSelection();
           toast.success(`${act.charAt(0).toUpperCase() + act.slice(1)} applied to ${hashes.length} torrent(s)`);
+        },
+        onError: (e) => toast.error(e instanceof Error ? e.message : "Action failed"),
+      }
+    );
+  }
+
+  function executeBulkDelete(deleteFiles: boolean) {
+    const hashes = Array.from(selectedHashes);
+    action(
+      { action: "delete", hashes, deleteFiles },
+      {
+        onSuccess: () => {
+          clearSelection();
+          toast.success(`Deleted ${hashes.length} torrent(s)`);
         },
         onError: (e) => toast.error(e instanceof Error ? e.message : "Action failed"),
       }
@@ -99,7 +116,7 @@ export function TorrentTable() {
         <Button size="sm" variant="secondary" onClick={() => bulkAction("bottomPrio")} disabled={selectedHashes.size === 0} className="gap-1.5">
           <ChevronsDown className="h-3.5 w-3.5" /> Bottom
         </Button>
-        <Button size="sm" variant="destructive" onClick={() => bulkAction("delete")} disabled={selectedHashes.size === 0} className="gap-1.5">
+        <Button size="sm" variant="destructive" onClick={() => setBulkDeleteOpen(true)} disabled={selectedHashes.size === 0} className="gap-1.5">
           <Trash2 className="h-3.5 w-3.5" /> Delete
         </Button>
         {selectedHashes.size > 0 && (
@@ -188,6 +205,16 @@ export function TorrentTable() {
       <div className="px-4 py-2 border-t border-white/10 text-xs text-gray-500 shrink-0">
         {filteredTorrents.length} torrent{filteredTorrents.length !== 1 ? "s" : ""}
       </div>
+
+      <DeleteConfirmationDialog
+        open={bulkDeleteOpen}
+        torrentCount={selectedHashes.size}
+        onClose={() => setBulkDeleteOpen(false)}
+        onConfirm={(deleteFiles) => {
+          setBulkDeleteOpen(false);
+          executeBulkDelete(deleteFiles);
+        }}
+      />
     </div>
   );
 }
