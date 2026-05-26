@@ -5,7 +5,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -81,14 +80,14 @@ export function DeleteConfirmationDialog({
           </Label>
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-2">
+        <div className="flex justify-end gap-2">
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
           <Button variant="destructive" onClick={handleConfirm}>
             Delete
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
