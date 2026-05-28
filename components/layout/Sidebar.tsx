@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Download,
@@ -11,12 +12,16 @@ import {
   LayoutDashboard,
   LogOut,
   Wifi,
+  WifiOff,
   Settings,
+  RefreshCw,
+  Terminal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TorrentFilter } from "@/lib/types";
 import { useUIStore } from "@/store";
 import { useTorrents } from "@/hooks/useTorrents";
+import { RequestLogsDialog } from "./RequestLogsDialog";
 
 const NAV_ITEMS: { label: string; filter: TorrentFilter; icon: React.ReactNode }[] = [
   { label: "All Torrents", filter: "all", icon: <List className="h-4 w-4" /> },
@@ -30,7 +35,8 @@ const NAV_ITEMS: { label: string; filter: TorrentFilter; icon: React.ReactNode }
 export function Sidebar() {
   const router = useRouter();
   const { filter, setFilter } = useUIStore();
-  const { data, isError } = useTorrents();
+  const { data, isError, refetch } = useTorrents();
+  const [logsOpen, setLogsOpen] = useState(false);
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -87,12 +93,30 @@ export function Sidebar() {
       {/* Footer */}
       <div className="p-3 border-t border-white/10 space-y-2">
         <div className={cn(
-          "flex items-center gap-2 px-3 py-2 rounded-lg text-xs",
+          "flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs",
           isError ? "text-red-400" : "text-green-400"
         )}>
-          <Wifi className="h-3.5 w-3.5" />
-          <span>{isError ? "Disconnected" : "Connected"}</span>
+          <span className="flex items-center gap-2">
+            {isError ? <WifiOff className="h-3.5 w-3.5" /> : <Wifi className="h-3.5 w-3.5" />}
+            {isError ? "Disconnected" : "Connected"}
+          </span>
+          {isError && (
+            <button
+              onClick={() => refetch()}
+              title="Reconnect"
+              className="p-1 rounded hover:bg-white/10 transition-colors cursor-pointer"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
+        <button
+          onClick={() => setLogsOpen(true)}
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+        >
+          <Terminal className="h-4 w-4" />
+          API Logs
+        </button>
         <button
           onClick={() => router.push("/settings")}
           className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
@@ -108,6 +132,8 @@ export function Sidebar() {
           Disconnect
         </button>
       </div>
+
+      <RequestLogsDialog open={logsOpen} onClose={() => setLogsOpen(false)} />
     </div>
   );
 }

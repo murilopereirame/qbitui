@@ -52,7 +52,7 @@ export function TorrentRow({ torrent }: TorrentRowProps) {
   return (
     <tr
       className={cn(
-        "group border-b border-white/5 hover:bg-white/3 transition-colors",
+        "group border-b border-white/5 hover:bg-white/3 transition-colors cursor-pointer",
         (isSelected || isActive) && "bg-blue-600/10"
       )}
       onClick={() => setActiveTorrentHash(torrent.hash)}

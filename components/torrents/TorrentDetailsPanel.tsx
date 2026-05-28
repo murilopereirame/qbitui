@@ -2,7 +2,6 @@
 
 import { useMemo, useState, useRef, useEffect } from "react";
 import { useColumnResize } from "@/hooks/useColumnResize";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTorrents } from "@/hooks/useTorrents";
@@ -192,6 +191,7 @@ export function TorrentDetailsPanel() {
   );
   const { mutate: setPriority, isPending } = useSetTorrentFilePriority();
   const [selectedNodes, setSelectedNodes] = useState<Set<string>>(new Set());
+  const [bulkPriorityValue, setBulkPriorityValue] = useState("");
   const { widths: trackerWidths, startResize: startTrackerResize } = useColumnResize([50, 300, 80, 60, 60, 70, 90, 200]);
   const { widths: peerWidths, startResize: startPeerResize } = useColumnResize([70, 120, 50, 80, 60, 100, 70, 80, 80, 90, 80, 60, 120]);
   const { widths: contentWidths, startResize: startContentResize } = useColumnResize([300, 80, 70, 140, 80, 80]);
@@ -502,22 +502,24 @@ export function TorrentDetailsPanel() {
 
         <TabsContent value="content" className="h-full overflow-auto">
           <div className="flex items-center gap-2 mb-2">
-            <Button
-              size="sm"
-              variant="secondary"
+            <select
+              className="bg-gray-900 border border-white/10 rounded px-2 py-1 text-xs disabled:opacity-40 cursor-pointer"
+              value={bulkPriorityValue}
               disabled={isPending || selectedFileIds().length === 0}
-              onClick={() => applyPriority(selectedFileIds(), 1)}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val !== "") {
+                  applyPriority(selectedFileIds(), Number(val));
+                  setBulkPriorityValue("");
+                }
+              }}
             >
-              Set selected: Normal
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={isPending || selectedFileIds().length === 0}
-              onClick={() => applyPriority(selectedFileIds(), 0)}
-            >
-              Set selected: Do not download
-            </Button>
+              <option value="" disabled>Set selected priority…</option>
+              <option value="0">Do not download</option>
+              <option value="1">Normal</option>
+              <option value="6">High</option>
+              <option value="7">Maximal</option>
+            </select>
             <span className="text-xs text-gray-500 ml-auto">{selectedFileIds().length} files selected</span>
           </div>
           <table
