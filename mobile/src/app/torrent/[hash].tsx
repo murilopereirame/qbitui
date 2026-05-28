@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -23,6 +24,7 @@ export default function TorrentDetailsScreen() {
   const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState<Tab>('properties');
   const [selectedFileIndexes, setSelectedFileIndexes] = useState<Set<number>>(new Set());
+  const [priorityPickerOpen, setPriorityPickerOpen] = useState(false);
 
   const { data: torrents } = useTorrents();
   const torrent = torrents?.find((t) => t.hash === hash);
@@ -257,22 +259,43 @@ export default function TorrentDetailsScreen() {
           {selectedFileIndexes.size > 0 && (
             <View style={styles.bulkBar}>
               <Text style={styles.bulkCount}>{selectedFileIndexes.size} selected</Text>
-              <View style={styles.bulkActions}>
-                {FILE_PRIORITIES.map((option) => (
-                  <Pressable
-                    key={option.value}
-                    style={[styles.bulkPriorityButton, isSettingFilePriority && styles.bulkPriorityButtonDisabled]}
-                    onPress={() => bulkSetPriority(option.value)}
-                    disabled={isSettingFilePriority}>
-                    <Text style={styles.bulkPriorityText}>{option.label}</Text>
-                  </Pressable>
-                ))}
-              </View>
+              <Pressable
+                style={[styles.bulkPriorityButton, isSettingFilePriority && styles.bulkPriorityButtonDisabled]}
+                onPress={() => setPriorityPickerOpen(true)}
+                disabled={isSettingFilePriority}>
+                <Text style={styles.bulkPriorityText}>Set Priority…</Text>
+              </Pressable>
               <Pressable onPress={clearFileSelection} style={styles.bulkClear}>
                 <Text style={styles.bulkClearText}>✕</Text>
               </Pressable>
             </View>
           )}
+
+          <Modal
+            visible={priorityPickerOpen}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setPriorityPickerOpen(false)}>
+            <Pressable style={styles.modalOverlay} onPress={() => setPriorityPickerOpen(false)}>
+              <View style={styles.prioritySheet}>
+                <Text style={styles.sheetTitle}>Set Priority</Text>
+                {FILE_PRIORITIES.map((opt) => (
+                  <Pressable
+                    key={opt.value}
+                    style={styles.sheetOption}
+                    onPress={() => {
+                      setPriorityPickerOpen(false);
+                      bulkSetPriority(opt.value);
+                    }}>
+                    <Text style={styles.sheetOptionText}>{opt.label}</Text>
+                  </Pressable>
+                ))}
+                <Pressable style={styles.sheetCancel} onPress={() => setPriorityPickerOpen(false)}>
+                  <Text style={styles.sheetCancelText}>Cancel</Text>
+                </Pressable>
+              </View>
+            </Pressable>
+          </Modal>
         </>
       )}
     </SafeAreaView>
@@ -445,11 +468,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     minWidth: 64,
   },
-  bulkActions: {
-    flex: 1,
-    flexDirection: 'row',
-    gap: 6,
-  },
   bulkPriorityButton: {
     flex: 1,
     borderWidth: 1,
@@ -474,5 +492,50 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     fontSize: 16,
     fontWeight: '700',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  prioritySheet: {
+    backgroundColor: '#111827',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingTop: 16,
+    paddingBottom: 32,
+    paddingHorizontal: 16,
+    gap: 4,
+    borderTopWidth: 1,
+    borderColor: '#374151',
+  },
+  sheetTitle: {
+    color: '#9ca3af',
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+  sheetOption: {
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1f2937',
+  },
+  sheetOptionText: {
+    color: '#f1f5f9',
+    fontSize: 16,
+  },
+  sheetCancel: {
+    marginTop: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  sheetCancelText: {
+    color: '#6b7280',
+    fontSize: 15,
+    fontWeight: '600',
   },
 });

@@ -64,10 +64,20 @@ export default function TorrentsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>qbitUI</Text>
-        <View style={styles.speeds}>
-          <Text style={styles.speedDl}>↓ {transfer ? formatSpeed(transfer.dl_info_speed) : '—'}</Text>
-          <Text style={styles.speedUl}>↑ {transfer ? formatSpeed(transfer.up_info_speed) : '—'}</Text>
-        </View>
+        {isError ? (
+          <View style={styles.disconnected}>
+            <MaterialIcons name="wifi-off" size={14} color="#ef4444" />
+            <Text style={styles.disconnectedText}>Disconnected</Text>
+            <Pressable onPress={() => refetch()} style={styles.reconnectBtn} hitSlop={8}>
+              <MaterialIcons name="refresh" size={18} color="#ef4444" />
+            </Pressable>
+          </View>
+        ) : (
+          <View style={styles.speeds}>
+            <Text style={styles.speedDl}>↓ {transfer ? formatSpeed(transfer.dl_info_speed) : '—'}</Text>
+            <Text style={styles.speedUl}>↑ {transfer ? formatSpeed(transfer.up_info_speed) : '—'}</Text>
+          </View>
+        )}
       </View>
 
       {/* Search */}
@@ -227,6 +237,9 @@ const styles = StyleSheet.create({
   speeds: { flexDirection: 'row', gap: 12 },
   speedDl: { color: '#3b82f6', fontSize: 13, fontWeight: '600' },
   speedUl: { color: '#22c55e', fontSize: 13, fontWeight: '600' },
+  disconnected: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  disconnectedText: { color: '#ef4444', fontSize: 13, fontWeight: '600' },
+  reconnectBtn: { padding: 2 },
   searchWrap: { paddingHorizontal: 12, paddingVertical: 8 },
   search: {
     backgroundColor: '#111827',
