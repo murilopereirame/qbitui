@@ -6,21 +6,38 @@ import {
   Alert,
   BackHandler,
   FlatList,
+  LayoutAnimation,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
+  UIManager,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, {
+  FadeIn,
+  FadeOut,
+  SlideInDown,
+  SlideOutUp,
+  ZoomIn,
+  ZoomOut,
+} from 'react-native-reanimated';
 
 import { useTorrentAction, useTorrents, useTransfer } from '@/hooks/use-qbit';
 import { formatBytes, formatETA, formatSpeed, FILTER_STATES, getStateColor, getStateLabel, toPercent } from '@/lib/utils';
 import { TorrentAction, TorrentFilter } from '@/lib/types';
 import { useUIStore } from '@/store';
 import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
+
+if (Platform.OS === 'android') {
+  UIManager.setLayoutAnimationEnabledExperimental?.(true);
+}
+
+const LAYOUT_ANIM = LayoutAnimation.create(230, 'easeInEaseOut', 'opacity');
 
 type MaterialIconName = React.ComponentProps<typeof MaterialIcons>['name'];
 type SELECTION_ACTION = Exclude<TorrentAction, 'recheck' | 'reannounce'>;
@@ -84,11 +101,21 @@ export default function TorrentsScreen() {
   const allSelected =
     filteredTorrents.length > 0 && filteredTorrents.every((t) => selectedHashes.has(t.hash));
 
+  function triggerSelectionEnter(hash: string) {
+    LayoutAnimation.configureNext(LAYOUT_ANIM);
+    enterSelectionMode(hash);
+  }
+
+  function triggerSelectionExit() {
+    LayoutAnimation.configureNext(LAYOUT_ANIM);
+    clearSelection();
+  }
+
   // Android hardware back exits selection mode instead of leaving the screen.
   useEffect(() => {
     if (!selectionMode) return;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      clearSelection();
+      triggerSelectionExit();
       return true;
     });
     return () => sub.remove();
@@ -119,7 +146,7 @@ export default function TorrentsScreen() {
     doAction(
       { action, hashes },
       {
-        onSuccess: () => clearSelection(),
+        onSuccess: () => triggerSelectionExit(),
         onError: (e) => Alert.alert('Error', e instanceof Error ? e.message : 'Action failed'),
       }
     );
@@ -129,9 +156,9 @@ export default function TorrentsScreen() {
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       {/* Header / Selection bar */}
       {selectionMode ? (
-        <>
+        <Animated.View entering={SlideInDown.duration(220)} exiting={SlideOutUp.duration(180)}>
           <View style={styles.selectionBar}>
-            <Pressable onPress={clearSelection} hitSlop={8} style={styles.selBarIconBtn}>
+            <Pressable onPress={triggerSelectionExit} hitSlop={8} style={styles.selBarIconBtn}>
               <MaterialIcons name="close" size={22} color="#e2e8f0" />
             </Pressable>
             <Text style={styles.selBarCount}>{selectedHashes.size} selected</Text>
@@ -165,25 +192,27 @@ export default function TorrentsScreen() {
               })}
             </ScrollView>
           </View>
-        </>
+        </Animated.View>
       ) : (
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>qbitUI</Text>
-          {isError ? (
-            <View style={styles.disconnected}>
-              <MaterialIcons name="wifi-off" size={14} color="#ef4444" />
-              <Text style={styles.disconnectedText}>Disconnected</Text>
-              <Pressable onPress={() => refetch()} style={styles.reconnectBtn} hitSlop={8}>
-                <MaterialIcons name="refresh" size={18} color="#ef4444" />
-              </Pressable>
-            </View>
-          ) : (
-            <View style={styles.speeds}>
-              <Text style={styles.speedDl}>↓ {transfer ? formatSpeed(transfer.dl_info_speed) : '—'}</Text>
-              <Text style={styles.speedUl}>↑ {transfer ? formatSpeed(transfer.up_info_speed) : '—'}</Text>
-            </View>
-          )}
-        </View>
+        <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>qbitUI</Text>
+            {isError ? (
+              <View style={styles.disconnected}>
+                <MaterialIcons name="wifi-off" size={14} color="#ef4444" />
+                <Text style={styles.disconnectedText}>Disconnected</Text>
+                <Pressable onPress={() => refetch()} style={styles.reconnectBtn} hitSlop={8}>
+                  <MaterialIcons name="refresh" size={18} color="#ef4444" />
+                </Pressable>
+              </View>
+            ) : (
+              <View style={styles.speeds}>
+                <Text style={styles.speedDl}>↓ {transfer ? formatSpeed(transfer.dl_info_speed) : '—'}</Text>
+                <Text style={styles.speedUl}>↑ {transfer ? formatSpeed(transfer.up_info_speed) : '—'}</Text>
+              </View>
+            )}
+          </View>
+        </Animated.View>
       )}
 
       {/* Search */}
@@ -270,13 +299,15 @@ export default function TorrentsScreen() {
                   if (selectionMode) toggleSelection(t.hash);
                   else router.push(`/torrent/${t.hash}`);
                 }}
-                onLongPress={() => enterSelectionMode(t.hash)}
+                onLongPress={() => triggerSelectionEnter(t.hash)}
                 delayLongPress={300}>
                 <View style={styles.torrentTop}>
                   {selectionMode && (
-                    <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-                      {isSelected && <MaterialIcons name="check" size={14} color="#fff" />}
-                    </View>
+                    <Animated.View entering={ZoomIn.duration(200)} exiting={ZoomOut.duration(150)}>
+                      <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                        {isSelected && <MaterialIcons name="check" size={14} color="#fff" />}
+                      </View>
+                    </Animated.View>
                   )}
                   <Text style={styles.torrentName} numberOfLines={1}>{t.name}</Text>
                   <View style={[styles.badge, { borderColor: stateColor }]}>
@@ -302,24 +333,26 @@ export default function TorrentsScreen() {
                 </View>
 
                 {!selectionMode && (
-                  <View style={styles.torrentActions}>
-                    <Pressable
-                      style={styles.actionBtn}
-                      onPress={() =>
-                        doAction({ action: isPaused ? 'resume' : 'pause', hashes: [t.hash] })
-                      }>
-                      <MaterialIcons
-                        name={isPaused ? 'play-arrow' : 'pause'}
-                        size={20}
-                        color="#e2e8f0"
-                      />
-                    </Pressable>
-                    <Pressable
-                      style={[styles.actionBtn, styles.actionBtnDanger]}
-                      onPress={() => confirmDelete(t.hash, t.name)}>
-                      <MaterialIcons name="delete" size={20} color="#fca5a5" />
-                    </Pressable>
-                  </View>
+                  <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+                    <View style={styles.torrentActions}>
+                      <Pressable
+                        style={styles.actionBtn}
+                        onPress={() =>
+                          doAction({ action: isPaused ? 'resume' : 'pause', hashes: [t.hash] })
+                        }>
+                        <MaterialIcons
+                          name={isPaused ? 'play-arrow' : 'pause'}
+                          size={20}
+                          color="#e2e8f0"
+                        />
+                      </Pressable>
+                      <Pressable
+                        style={[styles.actionBtn, styles.actionBtnDanger]}
+                        onPress={() => confirmDelete(t.hash, t.name)}>
+                        <MaterialIcons name="delete" size={20} color="#fca5a5" />
+                      </Pressable>
+                    </View>
+                  </Animated.View>
                 )}
               </Pressable>
             );
@@ -350,7 +383,7 @@ export default function TorrentsScreen() {
             { action: 'delete', hashes, deleteFiles },
             { onError: (e) => Alert.alert('Error', e instanceof Error ? e.message : 'Action failed') }
           );
-          clearSelection();
+          triggerSelectionExit();
         }}
       />
     </SafeAreaView>
