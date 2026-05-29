@@ -5,8 +5,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import React, { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
-import { useAuthStore } from '@/store';
 import { logger } from '@/lib/logger';
+import { useAuthStore } from '@/store';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -71,7 +71,7 @@ export default function RootLayout() {
           />
           <Stack.Screen
             name="logs"
-            options={{ headerShown: true, title: 'App Logs', presentation: 'card', headerBackTitle: '' }}
+            options={{ headerShown: true, title: 'App Logs', presentation: 'card', headerBackTitle: 'Settings' }}
           />
         </Stack>
       </ThemeProvider>
