@@ -6,38 +6,28 @@ import {
   Alert,
   BackHandler,
   FlatList,
-  LayoutAnimation,
-  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  UIManager,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
   FadeIn,
   FadeOut,
-  SlideInDown,
-  SlideOutUp,
+  LinearTransition,
   ZoomIn,
   ZoomOut,
 } from 'react-native-reanimated';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useTorrentAction, useTorrents, useTransfer } from '@/hooks/use-qbit';
-import { formatBytes, formatETA, formatSpeed, FILTER_STATES, getStateColor, getStateLabel, toPercent } from '@/lib/utils';
-import { TorrentAction, TorrentFilter } from '@/lib/types';
-import { useUIStore } from '@/store';
 import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
-
-if (Platform.OS === 'android') {
-  UIManager.setLayoutAnimationEnabledExperimental?.(true);
-}
-
-const LAYOUT_ANIM = LayoutAnimation.create(230, 'easeInEaseOut', 'opacity');
+import { useTorrentAction, useTorrents, useTransfer } from '@/hooks/use-qbit';
+import { TorrentAction, TorrentFilter } from '@/lib/types';
+import { FILTER_STATES, formatBytes, formatETA, formatSpeed, getStateColor, getStateLabel, toPercent } from '@/lib/utils';
+import { useUIStore } from '@/store';
 
 type MaterialIconName = React.ComponentProps<typeof MaterialIcons>['name'];
 type SELECTION_ACTION = Exclude<TorrentAction, 'recheck' | 'reannounce'>;
@@ -48,14 +38,14 @@ const SELECTION_ACTIONS: {
   icon: MaterialIconName;
   danger?: boolean;
 }[] = [
-  { action: 'resume', label: 'Resume', icon: 'play-arrow' },
-  { action: 'pause', label: 'Pause', icon: 'pause' },
-  { action: 'topPrio', label: 'Top', icon: 'vertical-align-top' },
-  { action: 'increasePrio', label: 'Up', icon: 'arrow-upward' },
-  { action: 'decreasePrio', label: 'Down', icon: 'arrow-downward' },
-  { action: 'bottomPrio', label: 'Bottom', icon: 'vertical-align-bottom' },
-  { action: 'delete', label: 'Delete', icon: 'delete', danger: true },
-];
+    { action: 'resume', label: 'Resume', icon: 'play-arrow' },
+    { action: 'pause', label: 'Pause', icon: 'pause' },
+    { action: 'topPrio', label: 'Top', icon: 'vertical-align-top' },
+    { action: 'increasePrio', label: 'Up', icon: 'arrow-upward' },
+    { action: 'decreasePrio', label: 'Down', icon: 'arrow-downward' },
+    { action: 'bottomPrio', label: 'Bottom', icon: 'vertical-align-bottom' },
+    { action: 'delete', label: 'Delete', icon: 'delete', danger: true },
+  ];
 
 const FILTERS: { key: TorrentFilter; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -102,12 +92,10 @@ export default function TorrentsScreen() {
     filteredTorrents.length > 0 && filteredTorrents.every((t) => selectedHashes.has(t.hash));
 
   function triggerSelectionEnter(hash: string) {
-    LayoutAnimation.configureNext(LAYOUT_ANIM);
     enterSelectionMode(hash);
   }
 
   function triggerSelectionExit() {
-    LayoutAnimation.configureNext(LAYOUT_ANIM);
     clearSelection();
   }
 
@@ -155,8 +143,9 @@ export default function TorrentsScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       {/* Header / Selection bar */}
-      {selectionMode ? (
-        <Animated.View entering={SlideInDown.duration(220)} exiting={SlideOutUp.duration(180)}>
+      <Animated.View layout={LinearTransition.duration(230)}>
+
+        {selectionMode ? (<>
           <View style={styles.selectionBar}>
             <Pressable onPress={triggerSelectionExit} hitSlop={8} style={styles.selBarIconBtn}>
               <MaterialIcons name="close" size={22} color="#e2e8f0" />
@@ -192,9 +181,8 @@ export default function TorrentsScreen() {
               })}
             </ScrollView>
           </View>
-        </Animated.View>
-      ) : (
-        <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+        </>
+        ) : (
           <View style={styles.header}>
             <Text style={styles.headerTitle}>qbitUI</Text>
             {isError ? (
@@ -212,8 +200,10 @@ export default function TorrentsScreen() {
               </View>
             )}
           </View>
-        </Animated.View>
-      )}
+        )}
+      </Animated.View>
+
+      <Animated.View layout={LinearTransition.duration(230)} style={{ flex: 1 }}>
 
       {/* Search */}
       <View style={styles.searchWrap}>
@@ -359,6 +349,8 @@ export default function TorrentsScreen() {
           }}
         />
       )}
+
+      </Animated.View>
 
       <DeleteConfirmModal
         visible={!!deleteTarget}
