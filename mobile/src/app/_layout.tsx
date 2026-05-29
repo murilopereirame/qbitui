@@ -71,7 +71,7 @@ export default function RootLayout() {
           />
           <Stack.Screen
             name="logs"
-            options={{ headerShown: true, title: 'App Logs', presentation: 'card' }}
+            options={{ headerShown: true, title: 'App Logs', presentation: 'card', headerBackTitle: '' }}
           />
         </Stack>
       </ThemeProvider>
