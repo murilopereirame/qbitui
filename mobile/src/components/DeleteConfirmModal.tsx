@@ -6,12 +6,13 @@ const PREF_KEY = 'qbitui_delete_files';
 
 interface Props {
   visible: boolean;
-  torrentName: string;
+  torrentName?: string;
+  count?: number;
   onCancel: () => void;
   onConfirm: (deleteFiles: boolean) => void;
 }
 
-export function DeleteConfirmModal({ visible, torrentName, onCancel, onConfirm }: Props) {
+export function DeleteConfirmModal({ visible, torrentName, count = 1, onCancel, onConfirm }: Props) {
   const [deleteFiles, setDeleteFiles] = useState(false);
 
   useEffect(() => {
@@ -29,13 +30,15 @@ export function DeleteConfirmModal({ visible, torrentName, onCancel, onConfirm }
     onConfirm(deleteFiles);
   }
 
+  const isBulk = count > 1;
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
       <View style={styles.overlay}>
         <View style={styles.modal}>
-          <Text style={styles.title}>Delete Torrent</Text>
+          <Text style={styles.title}>Delete Torrent{isBulk ? 's' : ''}</Text>
           <Text style={styles.message} numberOfLines={3}>
-            Remove "{torrentName}"?
+            {isBulk ? `Remove ${count} torrents?` : `Remove "${torrentName}"?`}
           </Text>
 
           <Pressable style={styles.checkRow} onPress={() => setDeleteFiles((v) => !v)}>
