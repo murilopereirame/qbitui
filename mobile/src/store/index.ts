@@ -23,10 +23,16 @@ interface UIState {
   search: string;
   activeTorrentHash: string | undefined;
   isAddModalOpen: boolean;
+  selectionMode: boolean;
+  selectedHashes: Set<string>;
   setFilter: (filter: TorrentFilter) => void;
   setSearch: (search: string) => void;
   setActiveTorrentHash: (hash?: string) => void;
   setAddModalOpen: (open: boolean) => void;
+  enterSelectionMode: (hash: string) => void;
+  toggleSelection: (hash: string) => void;
+  selectAll: (hashes: string[]) => void;
+  clearSelection: () => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -68,8 +74,20 @@ export const useUIStore = create<UIState>((set) => ({
   search: '',
   activeTorrentHash: undefined,
   isAddModalOpen: false,
+  selectionMode: false,
+  selectedHashes: new Set<string>(),
   setFilter: (filter) => set({ filter }),
   setSearch: (search) => set({ search }),
   setActiveTorrentHash: (activeTorrentHash) => set({ activeTorrentHash }),
   setAddModalOpen: (open) => set({ isAddModalOpen: open }),
+  enterSelectionMode: (hash) => set({ selectionMode: true, selectedHashes: new Set([hash]) }),
+  toggleSelection: (hash) =>
+    set((s) => {
+      const next = new Set(s.selectedHashes);
+      if (next.has(hash)) next.delete(hash);
+      else next.add(hash);
+      return { selectedHashes: next };
+    }),
+  selectAll: (hashes) => set({ selectedHashes: new Set(hashes) }),
+  clearSelection: () => set({ selectionMode: false, selectedHashes: new Set<string>() }),
 }));

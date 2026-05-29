@@ -6,6 +6,7 @@ import {
   TorrentTracker,
   TorrentFile,
 } from './types';
+import { logger } from './logger';
 
 type FormDataFileValue = {
   uri: string;
@@ -34,9 +35,24 @@ export class QBitAPI {
     return `${this.safeHost}${path}`;
   }
 
+  private async loggedFetch(url: string, options: RequestInit = {}): Promise<Response> {
+    const start = Date.now();
+    const path = new URL(url).pathname + new URL(url).search;
+    const method = (options.method ?? 'GET').toUpperCase();
+    try {
+      const res = await fetch(url, options);
+      logger.info(`${method} ${path} → ${res.status} (${Date.now() - start}ms)`, 'qbit-api');
+      return res;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error(`${method} ${path} failed: ${msg}`, 'qbit-api');
+      throw err;
+    }
+  }
+
   async verifyAuth(): Promise<boolean> {
     try {
-      const res = await fetch(this.url('/api/v2/app/version'), {
+      const res = await this.loggedFetch(this.url('/api/v2/app/version'), {
         headers: this.headers,
       });
       return res.ok;
@@ -46,7 +62,7 @@ export class QBitAPI {
   }
 
   async getTorrents(): Promise<Torrent[]> {
-    const res = await fetch(this.url('/api/v2/torrents/info'), {
+    const res = await this.loggedFetch(this.url('/api/v2/torrents/info'), {
       headers: this.headers,
     });
     if (!res.ok) throw new Error(`Failed to fetch torrents: ${res.status}`);
@@ -54,7 +70,7 @@ export class QBitAPI {
   }
 
   async getTransferInfo(): Promise<TransferInfo> {
-    const res = await fetch(this.url('/api/v2/transfer/info'), {
+    const res = await this.loggedFetch(this.url('/api/v2/transfer/info'), {
       headers: this.headers,
     });
     if (!res.ok) throw new Error('Failed to fetch transfer info');
@@ -85,14 +101,12 @@ export class QBitAPI {
   }
 
   private async submitTorrentsForm(form: FormData): Promise<void> {
-    const res = await fetch(this.url('/api/v2/torrents/add'), {
+    const res = await this.loggedFetch(this.url('/api/v2/torrents/add'), {
       method: 'POST',
       headers: this.headers,
       body: form,
     });
     if (!res.ok) throw new Error('Failed to add torrent');
-    const text = await res.text();
-    if (text !== 'Ok.') throw new Error(`qBittorrent error: ${text}`);
   }
 
   private applyOptions(form: FormData, options: AddTorrentOptions) {
@@ -122,7 +136,7 @@ export class QBitAPI {
     const form = new FormData();
     form.append('hashes', hashes.join('|'));
     form.append('deleteFiles', deleteFiles ? 'true' : 'false');
-    const res = await fetch(this.url('/api/v2/torrents/delete'), {
+    const res = await this.loggedFetch(this.url('/api/v2/torrents/delete'), {
       method: 'POST',
       headers: this.headers,
       body: form,
@@ -166,7 +180,7 @@ export class QBitAPI {
     form.append('hash', hash);
     form.append('id', fileIds.join('|'));
     form.append('priority', String(priority));
-    const res = await fetch(this.url('/api/v2/torrents/filePrio'), {
+    const res = await this.loggedFetch(this.url('/api/v2/torrents/filePrio'), {
       method: 'POST',
       headers: this.headers,
       body: form,
@@ -177,7 +191,7 @@ export class QBitAPI {
   private async torrentAction(path: string, hashes: string[]): Promise<void> {
     const form = new FormData();
     form.append('hashes', hashes.join('|'));
-    const res = await fetch(this.url(path), {
+    const res = await this.loggedFetch(this.url(path), {
       method: 'POST',
       headers: this.headers,
       body: form,
@@ -196,14 +210,14 @@ export class QBitAPI {
       return form;
     };
 
-    let res = await fetch(this.url(primaryPath), {
+    let res = await this.loggedFetch(this.url(primaryPath), {
       method: 'POST',
       headers: this.headers,
       body: buildForm(),
     });
 
     if (res.status === 404) {
-      res = await fetch(this.url(fallbackPath), {
+      res = await this.loggedFetch(this.url(fallbackPath), {
         method: 'POST',
         headers: this.headers,
         body: buildForm(),
@@ -214,7 +228,7 @@ export class QBitAPI {
   }
 
   private async fetchJson<T>(path: string): Promise<T> {
-    const res = await fetch(this.url(path), {
+    const res = await this.loggedFetch(this.url(path), {
       headers: this.headers,
     });
     if (!res.ok) throw new Error(`Failed to fetch ${path}: ${res.status}`);

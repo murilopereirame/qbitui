@@ -1,24 +1,61 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
+  BackHandler,
   FlatList,
+  LayoutAnimation,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
+  UIManager,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, {
+  FadeIn,
+  FadeOut,
+  SlideInDown,
+  SlideOutUp,
+  ZoomIn,
+  ZoomOut,
+} from 'react-native-reanimated';
 
 import { useTorrentAction, useTorrents, useTransfer } from '@/hooks/use-qbit';
 import { formatBytes, formatETA, formatSpeed, FILTER_STATES, getStateColor, getStateLabel, toPercent } from '@/lib/utils';
-import { TorrentFilter } from '@/lib/types';
+import { TorrentAction, TorrentFilter } from '@/lib/types';
 import { useUIStore } from '@/store';
 import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
+
+if (Platform.OS === 'android') {
+  UIManager.setLayoutAnimationEnabledExperimental?.(true);
+}
+
+const LAYOUT_ANIM = LayoutAnimation.create(230, 'easeInEaseOut', 'opacity');
+
+type MaterialIconName = React.ComponentProps<typeof MaterialIcons>['name'];
+type SELECTION_ACTION = Exclude<TorrentAction, 'recheck' | 'reannounce'>;
+
+const SELECTION_ACTIONS: {
+  action: SELECTION_ACTION;
+  label: string;
+  icon: MaterialIconName;
+  danger?: boolean;
+}[] = [
+  { action: 'resume', label: 'Resume', icon: 'play-arrow' },
+  { action: 'pause', label: 'Pause', icon: 'pause' },
+  { action: 'topPrio', label: 'Top', icon: 'vertical-align-top' },
+  { action: 'increasePrio', label: 'Up', icon: 'arrow-upward' },
+  { action: 'decreasePrio', label: 'Down', icon: 'arrow-downward' },
+  { action: 'bottomPrio', label: 'Bottom', icon: 'vertical-align-bottom' },
+  { action: 'delete', label: 'Delete', icon: 'delete', danger: true },
+];
 
 const FILTERS: { key: TorrentFilter; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -42,12 +79,47 @@ const STATE_COLORS: Record<string, string> = {
 
 export default function TorrentsScreen() {
   const router = useRouter();
-  const { filter, setFilter, search, setSearch } = useUIStore();
+  const {
+    filter,
+    setFilter,
+    search,
+    setSearch,
+    selectionMode,
+    selectedHashes,
+    enterSelectionMode,
+    toggleSelection,
+    selectAll,
+    clearSelection,
+  } = useUIStore();
   const { filteredTorrents, isLoading, isError, refetch, isFetching } = useTorrents();
   const { data: transfer } = useTransfer();
   const { mutate: doAction } = useTorrentAction();
   const [refreshing, setRefreshing] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ hash: string; name: string } | null>(null);
+  const [bulkDeleteVisible, setBulkDeleteVisible] = useState(false);
+
+  const allSelected =
+    filteredTorrents.length > 0 && filteredTorrents.every((t) => selectedHashes.has(t.hash));
+
+  function triggerSelectionEnter(hash: string) {
+    LayoutAnimation.configureNext(LAYOUT_ANIM);
+    enterSelectionMode(hash);
+  }
+
+  function triggerSelectionExit() {
+    LayoutAnimation.configureNext(LAYOUT_ANIM);
+    clearSelection();
+  }
+
+  // Android hardware back exits selection mode instead of leaving the screen.
+  useEffect(() => {
+    if (!selectionMode) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      triggerSelectionExit();
+      return true;
+    });
+    return () => sub.remove();
+  }, [selectionMode, clearSelection]);
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -59,16 +131,89 @@ export default function TorrentsScreen() {
     setDeleteTarget({ hash, name });
   }
 
+  function toggleSelectAll() {
+    if (allSelected) selectAll([]);
+    else selectAll(filteredTorrents.map((t) => t.hash));
+  }
+
+  function bulkAction(action: SELECTION_ACTION) {
+    const hashes = Array.from(selectedHashes);
+    if (hashes.length === 0) return;
+    if (action === 'delete') {
+      setBulkDeleteVisible(true);
+      return;
+    }
+    doAction(
+      { action, hashes },
+      {
+        onSuccess: () => triggerSelectionExit(),
+        onError: (e) => Alert.alert('Error', e instanceof Error ? e.message : 'Action failed'),
+      }
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>qbitUI</Text>
-        <View style={styles.speeds}>
-          <Text style={styles.speedDl}>↓ {transfer ? formatSpeed(transfer.dl_info_speed) : '—'}</Text>
-          <Text style={styles.speedUl}>↑ {transfer ? formatSpeed(transfer.up_info_speed) : '—'}</Text>
-        </View>
-      </View>
+      {/* Header / Selection bar */}
+      {selectionMode ? (
+        <Animated.View entering={SlideInDown.duration(220)} exiting={SlideOutUp.duration(180)}>
+          <View style={styles.selectionBar}>
+            <Pressable onPress={triggerSelectionExit} hitSlop={8} style={styles.selBarIconBtn}>
+              <MaterialIcons name="close" size={22} color="#e2e8f0" />
+            </Pressable>
+            <Text style={styles.selBarCount}>{selectedHashes.size} selected</Text>
+            <Pressable onPress={toggleSelectAll} hitSlop={8} style={styles.selBarIconBtn}>
+              <MaterialIcons name={allSelected ? 'done-all' : 'select-all'} size={22} color="#e2e8f0" />
+            </Pressable>
+          </View>
+          <View style={styles.selActionsWrap}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.selActionsRow}>
+              {SELECTION_ACTIONS.map(({ action, label, icon, danger }) => {
+                const disabled = selectedHashes.size === 0;
+                return (
+                  <Pressable
+                    key={action}
+                    style={[
+                      styles.selActionBtn,
+                      danger && styles.selActionBtnDanger,
+                      disabled && styles.selActionBtnDisabled,
+                    ]}
+                    disabled={disabled}
+                    onPress={() => bulkAction(action)}>
+                    <MaterialIcons name={icon} size={18} color={danger ? '#fca5a5' : '#e2e8f0'} />
+                    <Text style={[styles.selActionText, danger && styles.selActionTextDanger]}>
+                      {label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </Animated.View>
+      ) : (
+        <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>qbitUI</Text>
+            {isError ? (
+              <View style={styles.disconnected}>
+                <MaterialIcons name="wifi-off" size={14} color="#ef4444" />
+                <Text style={styles.disconnectedText}>Disconnected</Text>
+                <Pressable onPress={() => refetch()} style={styles.reconnectBtn} hitSlop={8}>
+                  <MaterialIcons name="refresh" size={18} color="#ef4444" />
+                </Pressable>
+              </View>
+            ) : (
+              <View style={styles.speeds}>
+                <Text style={styles.speedDl}>↓ {transfer ? formatSpeed(transfer.dl_info_speed) : '—'}</Text>
+                <Text style={styles.speedUl}>↑ {transfer ? formatSpeed(transfer.up_info_speed) : '—'}</Text>
+              </View>
+            )}
+          </View>
+        </Animated.View>
+      )}
 
       {/* Search */}
       <View style={styles.searchWrap}>
@@ -127,6 +272,7 @@ export default function TorrentsScreen() {
         <FlatList
           data={filteredTorrents}
           keyExtractor={(t) => t.hash}
+          extraData={selectedHashes}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -144,12 +290,25 @@ export default function TorrentsScreen() {
             const stateColorKey = getStateColor(t.state);
             const stateColor = STATE_COLORS[stateColorKey] ?? '#6b7280';
             const isPaused = FILTER_STATES.paused.includes(t.state);
+            const isSelected = selectedHashes.has(t.hash);
 
             return (
               <Pressable
-                style={styles.torrentRow}
-                onPress={() => router.push(`/torrent/${t.hash}`)}>
+                style={[styles.torrentRow, isSelected && styles.torrentRowSelected]}
+                onPress={() => {
+                  if (selectionMode) toggleSelection(t.hash);
+                  else router.push(`/torrent/${t.hash}`);
+                }}
+                onLongPress={() => triggerSelectionEnter(t.hash)}
+                delayLongPress={300}>
                 <View style={styles.torrentTop}>
+                  {selectionMode && (
+                    <Animated.View entering={ZoomIn.duration(200)} exiting={ZoomOut.duration(150)}>
+                      <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                        {isSelected && <MaterialIcons name="check" size={14} color="#fff" />}
+                      </View>
+                    </Animated.View>
+                  )}
                   <Text style={styles.torrentName} numberOfLines={1}>{t.name}</Text>
                   <View style={[styles.badge, { borderColor: stateColor }]}>
                     <Text style={[styles.badgeText, { color: stateColor }]}>
@@ -173,24 +332,28 @@ export default function TorrentsScreen() {
                   <Text style={styles.metaText}>ETA {formatETA(t.eta)}</Text>
                 </View>
 
-                <View style={styles.torrentActions}>
-                  <Pressable
-                    style={styles.actionBtn}
-                    onPress={() =>
-                      doAction({ action: isPaused ? 'resume' : 'pause', hashes: [t.hash] })
-                    }>
-                    <MaterialIcons
-                      name={isPaused ? 'play-arrow' : 'pause'}
-                      size={20}
-                      color="#e2e8f0"
-                    />
-                  </Pressable>
-                  <Pressable
-                    style={[styles.actionBtn, styles.actionBtnDanger]}
-                    onPress={() => confirmDelete(t.hash, t.name)}>
-                    <MaterialIcons name="delete" size={20} color="#fca5a5" />
-                  </Pressable>
-                </View>
+                {!selectionMode && (
+                  <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+                    <View style={styles.torrentActions}>
+                      <Pressable
+                        style={styles.actionBtn}
+                        onPress={() =>
+                          doAction({ action: isPaused ? 'resume' : 'pause', hashes: [t.hash] })
+                        }>
+                        <MaterialIcons
+                          name={isPaused ? 'play-arrow' : 'pause'}
+                          size={20}
+                          color="#e2e8f0"
+                        />
+                      </Pressable>
+                      <Pressable
+                        style={[styles.actionBtn, styles.actionBtnDanger]}
+                        onPress={() => confirmDelete(t.hash, t.name)}>
+                        <MaterialIcons name="delete" size={20} color="#fca5a5" />
+                      </Pressable>
+                    </View>
+                  </Animated.View>
+                )}
               </Pressable>
             );
           }}
@@ -206,6 +369,21 @@ export default function TorrentsScreen() {
             doAction({ action: 'delete', hashes: [deleteTarget.hash], deleteFiles });
           }
           setDeleteTarget(null);
+        }}
+      />
+
+      <DeleteConfirmModal
+        visible={bulkDeleteVisible}
+        count={selectedHashes.size}
+        onCancel={() => setBulkDeleteVisible(false)}
+        onConfirm={(deleteFiles) => {
+          const hashes = Array.from(selectedHashes);
+          setBulkDeleteVisible(false);
+          doAction(
+            { action: 'delete', hashes, deleteFiles },
+            { onError: (e) => Alert.alert('Error', e instanceof Error ? e.message : 'Action failed') }
+          );
+          triggerSelectionExit();
         }}
       />
     </SafeAreaView>
@@ -227,6 +405,42 @@ const styles = StyleSheet.create({
   speeds: { flexDirection: 'row', gap: 12 },
   speedDl: { color: '#3b82f6', fontSize: 13, fontWeight: '600' },
   speedUl: { color: '#22c55e', fontSize: 13, fontWeight: '600' },
+  disconnected: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  disconnectedText: { color: '#ef4444', fontSize: 13, fontWeight: '600' },
+  reconnectBtn: { padding: 2 },
+  selectionBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: '#0f1e3d',
+    borderBottomWidth: 1,
+    borderBottomColor: '#1e3a5f',
+  },
+  selBarIconBtn: { padding: 2 },
+  selBarCount: { color: '#fff', fontSize: 16, fontWeight: '700', flex: 1 },
+  selActionsWrap: {
+    backgroundColor: '#0b1730',
+    borderBottomWidth: 1,
+    borderBottomColor: '#1e3a5f',
+  },
+  selActionsRow: { paddingHorizontal: 10, paddingVertical: 8, gap: 8, alignItems: 'center' },
+  selActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    backgroundColor: '#1f2937',
+    borderWidth: 1,
+    borderColor: '#374151',
+  },
+  selActionBtnDanger: { backgroundColor: '#450a0a', borderColor: '#7f1d1d' },
+  selActionBtnDisabled: { opacity: 0.4 },
+  selActionText: { color: '#e2e8f0', fontSize: 13, fontWeight: '600' },
+  selActionTextDanger: { color: '#fca5a5' },
   searchWrap: { paddingHorizontal: 12, paddingVertical: 8 },
   search: {
     backgroundColor: '#111827',
@@ -284,11 +498,29 @@ const styles = StyleSheet.create({
     borderColor: '#1f2937',
     gap: 8,
   },
+  torrentRowSelected: {
+    borderColor: '#3b82f6',
+    backgroundColor: '#0f1e3d',
+  },
   torrentTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 8,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#374151',
+    backgroundColor: '#111827',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxSelected: {
+    borderColor: '#3b82f6',
+    backgroundColor: '#2563eb',
   },
   torrentName: { color: '#f1f5f9', fontSize: 14, fontWeight: '600', flex: 1 },
   badge: {

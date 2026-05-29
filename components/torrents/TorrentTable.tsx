@@ -31,11 +31,15 @@ const COLUMNS: { label: string; field?: SortField; align?: "right" }[] = [
 const INITIAL_COL_WIDTHS = [40, 224, 112, 56, 80, 96, 96, 80, 64, 96, 112, 40];
 
 export function TorrentTable() {
-  const { filteredTorrents, isLoading, isError, error } = useTorrents();
+  const { filteredTorrents, isLoading, isError, error, data } = useTorrents();
   const { sortField, sortDirection, toggleSort, selectedHashes, selectAll, clearSelection } = useUIStore();
   const { mutate: action } = useTorrentAction();
   const { widths, startResize } = useColumnResize(INITIAL_COL_WIDTHS);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+
+  const singleSelectedName = selectedHashes.size === 1
+    ? data?.find((t) => selectedHashes.has(t.hash))?.name
+    : undefined;
 
   const allSelected =
     filteredTorrents.length > 0 && filteredTorrents.every((t) => selectedHashes.has(t.hash));
@@ -209,6 +213,7 @@ export function TorrentTable() {
       <DeleteConfirmationDialog
         open={bulkDeleteOpen}
         torrentCount={selectedHashes.size}
+        torrentName={singleSelectedName}
         onClose={() => setBulkDeleteOpen(false)}
         onConfirm={(deleteFiles) => {
           setBulkDeleteOpen(false);
