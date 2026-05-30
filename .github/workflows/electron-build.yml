@@ -69,7 +69,6 @@ jobs:
           retention-days: 7
           path: |
             dist-electron/**/*.dmg
-            dist-electron/**/*.zip
             dist-electron/**/*.exe
             dist-electron/**/*.AppImage
             dist-electron/**/*.deb
@@ -94,7 +93,6 @@ jobs:
         with:
           files: |
             artifacts/**/*.dmg
-            artifacts/**/*.zip
             artifacts/**/*.exe
             artifacts/**/*.AppImage
             artifacts/**/*.deb
