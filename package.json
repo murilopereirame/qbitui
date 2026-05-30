@@ -1,6 +1,6 @@
 {
   "name": "qbitui",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "private": true,
   "main": "electron/dist/main.js",
   "engines": {
@@ -62,8 +62,18 @@
         ]
       },
       "target": [
-        { "target": "dmg", "arch": ["x64"] },
-        { "target": "dmg", "arch": ["arm64"] }
+        {
+          "target": "dmg",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        }
       ]
     },
     "win": {
