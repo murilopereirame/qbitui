@@ -15,8 +15,6 @@ import {
   View,
 } from 'react-native';
 import Animated, {
-  FadeIn,
-  FadeOut,
   LinearTransition,
   ZoomIn,
   ZoomOut,
@@ -24,9 +22,10 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
+import { TorrentActionSheet } from '@/components/TorrentActionSheet';
 import { useTorrentAction, useTorrents, useTransfer } from '@/hooks/use-qbit';
-import { TorrentAction, TorrentFilter } from '@/lib/types';
-import { FILTER_STATES, formatBytes, formatETA, formatSpeed, getStateColor, getStateLabel, toPercent } from '@/lib/utils';
+import { Torrent, TorrentAction, TorrentFilter } from '@/lib/types';
+import { formatBytes, formatETA, formatSpeed, getStateColor, getStateLabel, toPercent } from '@/lib/utils';
 import { useUIStore } from '@/store';
 
 type MaterialIconName = React.ComponentProps<typeof MaterialIcons>['name'];
@@ -87,13 +86,10 @@ export default function TorrentsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ hash: string; name: string } | null>(null);
   const [bulkDeleteVisible, setBulkDeleteVisible] = useState(false);
+  const [sheetTarget, setSheetTarget] = useState<Torrent | null>(null);
 
   const allSelected =
     filteredTorrents.length > 0 && filteredTorrents.every((t) => selectedHashes.has(t.hash));
-
-  function triggerSelectionEnter(hash: string) {
-    enterSelectionMode(hash);
-  }
 
   function triggerSelectionExit() {
     clearSelection();
@@ -279,7 +275,6 @@ export default function TorrentsScreen() {
           renderItem={({ item: t }) => {
             const stateColorKey = getStateColor(t.state);
             const stateColor = STATE_COLORS[stateColorKey] ?? '#6b7280';
-            const isPaused = FILTER_STATES.paused.includes(t.state);
             const isSelected = selectedHashes.has(t.hash);
 
             return (
@@ -289,7 +284,10 @@ export default function TorrentsScreen() {
                   if (selectionMode) toggleSelection(t.hash);
                   else router.push(`/torrent/${t.hash}`);
                 }}
-                onLongPress={() => triggerSelectionEnter(t.hash)}
+                onLongPress={() => {
+                  if (selectionMode) toggleSelection(t.hash);
+                  else setSheetTarget(t);
+                }}
                 delayLongPress={300}>
                 <View style={styles.torrentTop}>
                   {selectionMode && (
@@ -321,29 +319,6 @@ export default function TorrentsScreen() {
                   <Text style={styles.metaUl}>↑ {formatSpeed(t.upspeed)}</Text>
                   <Text style={styles.metaText}>ETA {formatETA(t.eta)}</Text>
                 </View>
-
-                {!selectionMode && (
-                  <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
-                    <View style={styles.torrentActions}>
-                      <Pressable
-                        style={styles.actionBtn}
-                        onPress={() =>
-                          doAction({ action: isPaused ? 'resume' : 'pause', hashes: [t.hash] })
-                        }>
-                        <MaterialIcons
-                          name={isPaused ? 'play-arrow' : 'pause'}
-                          size={20}
-                          color="#e2e8f0"
-                        />
-                      </Pressable>
-                      <Pressable
-                        style={[styles.actionBtn, styles.actionBtnDanger]}
-                        onPress={() => confirmDelete(t.hash, t.name)}>
-                        <MaterialIcons name="delete" size={20} color="#fca5a5" />
-                      </Pressable>
-                    </View>
-                  </Animated.View>
-                )}
               </Pressable>
             );
           }}
@@ -362,6 +337,13 @@ export default function TorrentsScreen() {
           }
           setDeleteTarget(null);
         }}
+      />
+
+      <TorrentActionSheet
+        torrent={sheetTarget}
+        onClose={() => setSheetTarget(null)}
+        onSelect={(hash) => enterSelectionMode(hash)}
+        onDelete={(t) => confirmDelete(t.hash, t.name)}
       />
 
       <DeleteConfirmModal
@@ -533,14 +515,4 @@ const styles = StyleSheet.create({
   metaText: { color: '#9ca3af', fontSize: 12 },
   metaDl: { color: '#3b82f6', fontSize: 12 },
   metaUl: { color: '#22c55e', fontSize: 12 },
-  torrentActions: { flexDirection: 'row', gap: 8, justifyContent: 'flex-end' },
-  actionBtn: {
-    backgroundColor: '#1f2937',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionBtnDanger: { backgroundColor: '#450a0a' },
 });

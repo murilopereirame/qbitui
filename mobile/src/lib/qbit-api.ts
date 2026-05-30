@@ -156,8 +156,25 @@ export class QBitAPI {
     await this.torrentAction('/api/v2/torrents/topPrio', hashes);
   }
 
+  async moveTorrentsUp(hashes: string[]): Promise<void> {
+    await this.torrentAction('/api/v2/torrents/increasePrio', hashes);
+  }
+
+  async moveTorrentsDown(hashes: string[]): Promise<void> {
+    await this.torrentAction('/api/v2/torrents/decreasePrio', hashes);
+  }
+
   async moveTorrentsBottom(hashes: string[]): Promise<void> {
     await this.torrentAction('/api/v2/torrents/bottomPrio', hashes);
+  }
+
+  /** Builds the authenticated request needed to download a torrent's .torrent file. */
+  buildExportRequest(hash: string): { url: string; headers: Record<string, string> } {
+    const params = new URLSearchParams({ hash });
+    return {
+      url: this.url(`/api/v2/torrents/export?${params}`),
+      headers: { ...this.headers },
+    };
   }
 
   async getTorrentProperties(hash: string): Promise<TorrentProperties> {

@@ -15,6 +15,8 @@ export interface Torrent {
   category: string;
   tags: string;
   save_path: string;
+  content_path: string;
+  magnet_uri: string;
   added_on: number;
   completion_on: number;
   downloaded: number;

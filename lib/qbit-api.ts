@@ -178,6 +178,15 @@ export class QBitAPI {
     await this.torrentAction("/api/v2/torrents/bottomPrio", hashes);
   }
 
+  async exportTorrent(hash: string): Promise<ArrayBuffer> {
+    const params = new URLSearchParams({ hash });
+    const res = await this.loggedFetch(this.url(`/api/v2/torrents/export?${params}`), {
+      headers: this.headers,
+    });
+    if (!res.ok) throw new Error(`Failed to export torrent: ${res.status}`);
+    return res.arrayBuffer();
+  }
+
   async getTorrentProperties(hash: string): Promise<TorrentProperties> {
     const params = new URLSearchParams({ hash });
     return this.fetchJson<TorrentProperties>(`/api/v2/torrents/properties?${params}`);
