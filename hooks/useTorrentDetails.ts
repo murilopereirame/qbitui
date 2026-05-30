@@ -23,6 +23,7 @@ export function useTorrentDetails(hash: string | undefined, sections: TorrentDet
     queryFn: () => fetchTorrentDetails(hash as string, sections),
     enabled: Boolean(hash) && sections.length > 0,
     refetchInterval,
+    refetchIntervalInBackground: true,
     staleTime: refetchInterval === false ? Infinity : Math.max(refetchInterval - 1_000, 0),
   });
 }

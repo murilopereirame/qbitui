@@ -34,6 +34,7 @@ export function useTorrents() {
     queryKey: ["torrents"],
     queryFn: fetchTorrents,
     refetchInterval: 2000,
+    refetchIntervalInBackground: true,
     staleTime: 1000,
   });
 

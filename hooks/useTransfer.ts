@@ -14,6 +14,7 @@ export function useTransfer() {
     queryKey: ["transfer"],
     queryFn: fetchTransfer,
     refetchInterval: 2000,
+    refetchIntervalInBackground: true,
     staleTime: 1000,
   });
 }
