@@ -12,7 +12,7 @@ type AddTorrentPayload =
 type TorrentActionPayload = { action: TorrentAction; hashes: string[]; deleteFiles?: boolean };
 type FilePriorityPayload = { hash: string; fileIds: number[]; priority: number };
 
-function useApi(): QBitAPI | null {
+export function useApi(): QBitAPI | null {
   const creds = useAuthStore((s) => s.credentials);
   if (!creds) return null;
   return new QBitAPI(creds.host, creds.apiToken);
@@ -136,6 +136,8 @@ export function useTorrentAction() {
         case 'recheck': return api.recheckTorrents(hashes);
         case 'reannounce': return api.reannounceTorrents(hashes);
         case 'topPrio': return api.moveTorrentsTop(hashes);
+        case 'increasePrio': return api.moveTorrentsUp(hashes);
+        case 'decreasePrio': return api.moveTorrentsDown(hashes);
         case 'bottomPrio': return api.moveTorrentsBottom(hashes);
         default: throw new Error(`Unknown action: ${action}`);
       }

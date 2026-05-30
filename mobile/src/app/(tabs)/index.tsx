@@ -24,8 +24,9 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
+import { TorrentActionSheet } from '@/components/TorrentActionSheet';
 import { useTorrentAction, useTorrents, useTransfer } from '@/hooks/use-qbit';
-import { TorrentAction, TorrentFilter } from '@/lib/types';
+import { Torrent, TorrentAction, TorrentFilter } from '@/lib/types';
 import { FILTER_STATES, formatBytes, formatETA, formatSpeed, getStateColor, getStateLabel, toPercent } from '@/lib/utils';
 import { useUIStore } from '@/store';
 
@@ -87,13 +88,10 @@ export default function TorrentsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ hash: string; name: string } | null>(null);
   const [bulkDeleteVisible, setBulkDeleteVisible] = useState(false);
+  const [sheetTarget, setSheetTarget] = useState<Torrent | null>(null);
 
   const allSelected =
     filteredTorrents.length > 0 && filteredTorrents.every((t) => selectedHashes.has(t.hash));
-
-  function triggerSelectionEnter(hash: string) {
-    enterSelectionMode(hash);
-  }
 
   function triggerSelectionExit() {
     clearSelection();
@@ -289,7 +287,10 @@ export default function TorrentsScreen() {
                   if (selectionMode) toggleSelection(t.hash);
                   else router.push(`/torrent/${t.hash}`);
                 }}
-                onLongPress={() => triggerSelectionEnter(t.hash)}
+                onLongPress={() => {
+                  if (selectionMode) toggleSelection(t.hash);
+                  else setSheetTarget(t);
+                }}
                 delayLongPress={300}>
                 <View style={styles.torrentTop}>
                   {selectionMode && (
@@ -362,6 +363,13 @@ export default function TorrentsScreen() {
           }
           setDeleteTarget(null);
         }}
+      />
+
+      <TorrentActionSheet
+        torrent={sheetTarget}
+        onClose={() => setSheetTarget(null)}
+        onSelect={(hash) => enterSelectionMode(hash)}
+        onDelete={(t) => confirmDelete(t.hash, t.name)}
       />
 
       <DeleteConfirmModal
