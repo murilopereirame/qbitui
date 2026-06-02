@@ -18,6 +18,9 @@ interface AuthState {
   clearCredentials: () => Promise<void>;
 }
 
+export type SortField = 'name' | 'size' | 'progress' | 'dlspeed' | 'upspeed' | 'ratio' | 'eta' | 'added_on';
+export type SortDir = 'asc' | 'desc';
+
 interface UIState {
   filter: TorrentFilter;
   search: string;
@@ -25,6 +28,8 @@ interface UIState {
   isAddModalOpen: boolean;
   selectionMode: boolean;
   selectedHashes: Set<string>;
+  sortField: SortField;
+  sortDir: SortDir;
   setFilter: (filter: TorrentFilter) => void;
   setSearch: (search: string) => void;
   setActiveTorrentHash: (hash?: string) => void;
@@ -33,6 +38,7 @@ interface UIState {
   toggleSelection: (hash: string) => void;
   selectAll: (hashes: string[]) => void;
   clearSelection: () => void;
+  toggleSort: (field: SortField) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -76,6 +82,8 @@ export const useUIStore = create<UIState>((set) => ({
   isAddModalOpen: false,
   selectionMode: false,
   selectedHashes: new Set<string>(),
+  sortField: 'added_on',
+  sortDir: 'desc',
   setFilter: (filter) => set({ filter }),
   setSearch: (search) => set({ search }),
   setActiveTorrentHash: (activeTorrentHash) => set({ activeTorrentHash }),
@@ -90,4 +98,9 @@ export const useUIStore = create<UIState>((set) => ({
     }),
   selectAll: (hashes) => set({ selectedHashes: new Set(hashes) }),
   clearSelection: () => set({ selectionMode: false, selectedHashes: new Set<string>() }),
+  toggleSort: (field) =>
+    set((s) => ({
+      sortField: field,
+      sortDir: s.sortField === field ? (s.sortDir === 'asc' ? 'desc' : 'asc') : 'desc',
+    })),
 }));

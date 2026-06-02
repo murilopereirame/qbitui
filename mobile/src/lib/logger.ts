@@ -5,6 +5,7 @@ export interface LogEntry {
   level: LogLevel;
   msg: string;
   ctx?: string;
+  body?: string;
 }
 
 const MAX_ENTRIES = 500;
@@ -15,8 +16,8 @@ function notify() {
   for (const fn of _listeners) fn();
 }
 
-function push(level: LogLevel, msg: string, ctx?: string) {
-  _entries.push({ ts: Date.now(), level, msg, ctx });
+function push(level: LogLevel, msg: string, ctx?: string, body?: string) {
+  _entries.push({ ts: Date.now(), level, msg, ctx, body });
   if (_entries.length > MAX_ENTRIES) {
     _entries.splice(0, _entries.length - MAX_ENTRIES);
   }
@@ -24,9 +25,9 @@ function push(level: LogLevel, msg: string, ctx?: string) {
 }
 
 export const logger = {
-  info: (msg: string, ctx?: string) => push('info', msg, ctx),
-  warn: (msg: string, ctx?: string) => push('warn', msg, ctx),
-  error: (msg: string, ctx?: string) => push('error', msg, ctx),
+  info: (msg: string, ctx?: string, body?: string) => push('info', msg, ctx, body),
+  warn: (msg: string, ctx?: string, body?: string) => push('warn', msg, ctx, body),
+  error: (msg: string, ctx?: string, body?: string) => push('error', msg, ctx, body),
   getLogs: (): readonly LogEntry[] => _entries,
   clear: () => { _entries.splice(0); notify(); },
   subscribe: (fn: () => void): (() => void) => {

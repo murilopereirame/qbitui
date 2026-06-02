@@ -6,6 +6,7 @@ export interface RequestLogEntry {
   status: number | null;
   duration: number;
   error?: string;
+  body?: string;
 }
 
 const MAX_ENTRIES = 500;

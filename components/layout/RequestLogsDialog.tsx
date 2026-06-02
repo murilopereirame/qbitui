@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { RequestLogEntry } from "@/lib/request-log";
 import { cn } from "@/lib/utils";
-import { Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Trash2 } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -17,6 +17,41 @@ function statusColor(status: number | null): string {
   if (status < 300) return "text-green-400";
   if (status < 400) return "text-yellow-400";
   return "text-red-400";
+}
+
+function LogRow({ entry }: { entry: RequestLogEntry }) {
+  const [expanded, setExpanded] = useState(false);
+  const hasBody = !!entry.body;
+  return (
+    <>
+      <tr
+        className={cn("border-b border-white/5", hasBody ? "cursor-pointer hover:bg-white/5" : "hover:bg-white/3")}
+        onClick={() => hasBody && setExpanded((v) => !v)}>
+        <td className="px-2 py-1 text-gray-500 whitespace-nowrap">
+          {new Date(entry.timestamp).toLocaleTimeString()}
+        </td>
+        <td className="px-2 py-1 text-blue-300">{entry.method}</td>
+        <td className="px-2 py-1 text-gray-300 truncate max-w-xs" title={entry.path}>
+          <span className="flex items-center gap-1">
+            {hasBody && (expanded ? <ChevronDown className="h-3 w-3 shrink-0 text-gray-500" /> : <ChevronRight className="h-3 w-3 shrink-0 text-gray-500" />)}
+            {entry.path}
+            {entry.error && <span className="text-red-400 ml-2">({entry.error})</span>}
+          </span>
+        </td>
+        <td className={cn("px-2 py-1 text-right", statusColor(entry.status))}>
+          {entry.status ?? "ERR"}
+        </td>
+        <td className="px-2 py-1 text-right text-gray-400">{entry.duration}ms</td>
+      </tr>
+      {expanded && entry.body && (
+        <tr className="border-b border-white/5 bg-black/30">
+          <td colSpan={5} className="px-4 py-2">
+            <pre className="text-xs text-gray-400 whitespace-pre-wrap break-all font-mono">{entry.body}</pre>
+          </td>
+        </tr>
+      )}
+    </>
+  );
 }
 
 export function RequestLogsDialog({ open, onClose }: Props) {
@@ -68,20 +103,7 @@ export function RequestLogsDialog({ open, onClose }: Props) {
               </thead>
               <tbody>
                 {logs.map((entry) => (
-                  <tr key={entry.id} className="border-b border-white/5 hover:bg-white/3">
-                    <td className="px-2 py-1 text-gray-500 whitespace-nowrap">
-                      {new Date(entry.timestamp).toLocaleTimeString()}
-                    </td>
-                    <td className="px-2 py-1 text-blue-300">{entry.method}</td>
-                    <td className="px-2 py-1 text-gray-300 truncate max-w-xs" title={entry.path}>
-                      {entry.path}
-                      {entry.error && <span className="text-red-400 ml-2">({entry.error})</span>}
-                    </td>
-                    <td className={cn("px-2 py-1 text-right", statusColor(entry.status))}>
-                      {entry.status ?? "ERR"}
-                    </td>
-                    <td className="px-2 py-1 text-right text-gray-400">{entry.duration}ms</td>
-                  </tr>
+                  <LogRow key={entry.id} entry={entry} />
                 ))}
               </tbody>
             </table>
