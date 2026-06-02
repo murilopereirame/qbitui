@@ -6,6 +6,7 @@ import {
   Alert,
   BackHandler,
   FlatList,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -25,11 +26,22 @@ import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
 import { TorrentActionSheet } from '@/components/TorrentActionSheet';
 import { useTorrentAction, useTorrents, useTransfer } from '@/hooks/use-qbit';
 import { Torrent, TorrentAction, TorrentFilter } from '@/lib/types';
-import { formatBytes, formatETA, formatSpeed, getStateColor, getStateLabel, toPercent } from '@/lib/utils';
-import { useUIStore } from '@/store';
+import { formatBytes, formatETA, formatRatio, formatSpeed, getStateColor, getStateLabel, toPercent } from '@/lib/utils';
+import { SortField, useUIStore } from '@/store';
 
 type MaterialIconName = React.ComponentProps<typeof MaterialIcons>['name'];
 type SELECTION_ACTION = Exclude<TorrentAction, 'recheck' | 'reannounce'>;
+
+const SORT_OPTIONS: { field: SortField; label: string }[] = [
+  { field: 'added_on', label: 'Date Added' },
+  { field: 'name', label: 'Name' },
+  { field: 'size', label: 'Size' },
+  { field: 'progress', label: 'Progress' },
+  { field: 'dlspeed', label: 'DL Speed' },
+  { field: 'upspeed', label: 'UL Speed' },
+  { field: 'ratio', label: 'Ratio' },
+  { field: 'eta', label: 'ETA' },
+];
 
 const SELECTION_ACTIONS: {
   action: SELECTION_ACTION;
@@ -79,6 +91,9 @@ export default function TorrentsScreen() {
     toggleSelection,
     selectAll,
     clearSelection,
+    sortField,
+    sortDir,
+    toggleSort,
   } = useUIStore();
   const { filteredTorrents, isLoading, isError, refetch, isFetching } = useTorrents();
   const { data: transfer } = useTransfer();
@@ -87,6 +102,7 @@ export default function TorrentsScreen() {
   const [deleteTarget, setDeleteTarget] = useState<{ hash: string; name: string } | null>(null);
   const [bulkDeleteVisible, setBulkDeleteVisible] = useState(false);
   const [sheetTarget, setSheetTarget] = useState<Torrent | null>(null);
+  const [sortModalVisible, setSortModalVisible] = useState(false);
 
   const allSelected =
     filteredTorrents.length > 0 && filteredTorrents.every((t) => selectedHashes.has(t.hash));
@@ -234,13 +250,60 @@ export default function TorrentsScreen() {
         </ScrollView>
       </View>
 
-      {/* Count */}
+      {/* Count + Sort */}
       <View style={styles.countRow}>
         <Text style={styles.countText}>
           {filteredTorrents.length} torrent{filteredTorrents.length !== 1 ? 's' : ''}
         </Text>
         {isFetching && !refreshing && <ActivityIndicator size="small" color="#3b82f6" />}
+        <Pressable onPress={() => setSortModalVisible(true)} style={styles.sortBtn} hitSlop={8}>
+          <MaterialIcons name="sort" size={16} color="#6b7280" />
+          <Text style={styles.sortBtnText}>
+            {SORT_OPTIONS.find((o) => o.field === sortField)?.label ?? 'Sort'}
+          </Text>
+          <MaterialIcons
+            name={sortDir === 'asc' ? 'arrow-upward' : 'arrow-downward'}
+            size={12}
+            color="#6b7280"
+          />
+        </Pressable>
       </View>
+
+      {/* Sort Modal */}
+      <Modal
+        visible={sortModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSortModalVisible(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setSortModalVisible(false)}>
+          <View style={styles.sortSheet}>
+            <Text style={styles.sortSheetTitle}>Sort by</Text>
+            {SORT_OPTIONS.map(({ field, label }) => {
+              const active = sortField === field;
+              return (
+                <Pressable
+                  key={field}
+                  style={[styles.sortOption, active && styles.sortOptionActive]}
+                  onPress={() => {
+                    toggleSort(field);
+                    setSortModalVisible(false);
+                  }}>
+                  <Text style={[styles.sortOptionText, active && styles.sortOptionTextActive]}>
+                    {label}
+                  </Text>
+                  {active && (
+                    <MaterialIcons
+                      name={sortDir === 'asc' ? 'arrow-upward' : 'arrow-downward'}
+                      size={16}
+                      color="#3b82f6"
+                    />
+                  )}
+                </Pressable>
+              );
+            })}
+          </View>
+        </Pressable>
+      </Modal>
 
       {/* List */}
       {isError ? (
@@ -318,6 +381,7 @@ export default function TorrentsScreen() {
                   <Text style={styles.metaDl}>↓ {formatSpeed(t.dlspeed)}</Text>
                   <Text style={styles.metaUl}>↑ {formatSpeed(t.upspeed)}</Text>
                   <Text style={styles.metaText}>ETA {formatETA(t.eta)}</Text>
+                  <Text style={styles.metaRatio}>R {formatRatio(t.ratio)}</Text>
                 </View>
               </Pressable>
             );
@@ -515,4 +579,53 @@ const styles = StyleSheet.create({
   metaText: { color: '#9ca3af', fontSize: 12 },
   metaDl: { color: '#3b82f6', fontSize: 12 },
   metaUl: { color: '#22c55e', fontSize: 12 },
+  metaRatio: { color: '#a855f7', fontSize: 12 },
+  sortBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginLeft: 'auto',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: '#111827',
+    borderWidth: 1,
+    borderColor: '#374151',
+  },
+  sortBtnText: { color: '#6b7280', fontSize: 12 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  sortSheet: {
+    backgroundColor: '#111827',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingTop: 16,
+    paddingBottom: 32,
+    paddingHorizontal: 8,
+    borderTopWidth: 1,
+    borderColor: '#1f2937',
+  },
+  sortSheetTitle: {
+    color: '#6b7280',
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    paddingHorizontal: 12,
+    paddingBottom: 8,
+  },
+  sortOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 10,
+  },
+  sortOptionActive: { backgroundColor: '#1e3a5f' },
+  sortOptionText: { color: '#e2e8f0', fontSize: 15 },
+  sortOptionTextActive: { color: '#93c5fd', fontWeight: '600' },
 });

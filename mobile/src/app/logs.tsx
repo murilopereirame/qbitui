@@ -43,6 +43,9 @@ export default function LogsScreen() {
       </Text>
       {item.ctx && <Text style={styles.ctx}>[{item.ctx}]</Text>}
       <Text style={styles.msg} selectable>{item.msg}</Text>
+      {item.body !== undefined && (
+        <Text style={styles.body} selectable>{item.body}</Text>
+      )}
     </View>
   ), []);
 
@@ -109,6 +112,7 @@ const styles = StyleSheet.create({
   level: { fontSize: 11, fontWeight: '700', fontFamily: 'monospace', minWidth: 40 },
   ctx: { color: '#6b7280', fontSize: 11, fontFamily: 'monospace' },
   msg: { color: '#e2e8f0', fontSize: 12, flex: 1, flexShrink: 1 },
+  body: { color: '#6b7280', fontSize: 11, fontFamily: 'monospace', width: '100%', marginTop: 2 },
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyText: { color: '#4b5563', fontSize: 14 },
 });

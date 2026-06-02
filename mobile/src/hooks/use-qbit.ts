@@ -20,7 +20,7 @@ export function useApi(): QBitAPI | null {
 
 export function useTorrents() {
   const api = useApi();
-  const { filter, search } = useUIStore();
+  const { filter, search, sortField, sortDir } = useUIStore();
 
   const query = useQuery<Torrent[]>({
     queryKey: ['torrents'],
@@ -53,8 +53,20 @@ export function useTorrents() {
       );
     }
 
+    data = [...data].sort((a, b) => {
+      let cmp = 0;
+      const av = a[sortField as keyof Torrent];
+      const bv = b[sortField as keyof Torrent];
+      if (typeof av === 'string' && typeof bv === 'string') {
+        cmp = av.localeCompare(bv);
+      } else {
+        cmp = (av as number) - (bv as number);
+      }
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+
     return data;
-  }, [query.data, filter, search]);
+  }, [query.data, filter, search, sortField, sortDir]);
 
   return { ...query, filteredTorrents };
 }

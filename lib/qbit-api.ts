@@ -36,7 +36,13 @@ export class QBitAPI {
     const method = (options.method ?? "GET").toUpperCase();
     try {
       const res = await fetch(url, options);
-      addRequestLog({ timestamp: new Date().toISOString(), method, path, status: res.status, duration: Date.now() - start });
+      const ct = res.headers.get("content-type") ?? "";
+      let body: string | undefined;
+      if (ct.includes("text") || ct.includes("json")) {
+        const text = await res.clone().text();
+        body = text.length > 500 ? text.slice(0, 500) + "…" : text;
+      }
+      addRequestLog({ timestamp: new Date().toISOString(), method, path, status: res.status, duration: Date.now() - start, body });
       return res;
     } catch (err) {
       addRequestLog({ timestamp: new Date().toISOString(), method, path, status: null, duration: Date.now() - start, error: err instanceof Error ? err.message : String(err) });
