@@ -110,6 +110,18 @@ export function useTorrentAction() {
   });
 }
 
+interface AddTorrentResponse {
+  success: boolean;
+  /** Set when the torrent was added but a file selection could not be applied. */
+  warning?: string;
+}
+
+function collectWarnings(results: PromiseSettledResult<AddTorrentResponse>[]): string[] {
+  return results.flatMap((result) =>
+    result.status === "fulfilled" && result.value?.warning ? [result.value.warning] : []
+  );
+}
+
 export function useAddTorrent() {
   const queryClient = useQueryClient();
 
@@ -132,7 +144,16 @@ export function useAddTorrent() {
   });
 
   const addFile = useMutation({
-    mutationFn: async ({ files, options }: { files: File[]; options: AddTorrentOptions }) => {
+    mutationFn: async ({
+      files,
+      options,
+      excludedPaths,
+    }: {
+      files: File[];
+      options: AddTorrentOptions;
+      /** Files the user deselected, keyed by torrent file name. */
+      excludedPaths?: Record<string, string[]>;
+    }) => {
       const results = await Promise.allSettled(
         files.map(async (file) => {
           const form = new FormData();
@@ -141,6 +162,10 @@ export function useAddTorrent() {
           if (options.category) form.append("category", options.category);
           if (options.tags) form.append("tags", options.tags);
           if (options.paused) form.append("paused", "true");
+          const excluded = excludedPaths?.[file.name];
+          if (excluded && excluded.length > 0) {
+            form.append("excludedPaths", JSON.stringify(excluded));
+          }
 
           const res = await fetch("/api/torrents", {
             method: "POST",
@@ -150,7 +175,7 @@ export function useAddTorrent() {
             const data = await res.json().catch(() => ({}));
             throw new Error(data.error ?? `Failed to add ${file.name}`);
           }
-          return res.json();
+          return res.json() as Promise<AddTorrentResponse>;
         })
       );
 
@@ -158,11 +183,35 @@ export function useAddTorrent() {
       if (failed.length > 0) {
         throw new Error(`${failed.length} file(s) failed to upload`);
       }
+      return collectWarnings(results);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["torrents"] });
     },
   });
 
-  return { addMagnet, addFile };
+  /** Confirms magnets that were staged by the metadata prefetch step. */
+  const addStaged = useMutation({
+    mutationFn: async ({
+      staged,
+      options,
+    }: {
+      staged: { hash: string; excludedPaths: string[] }[];
+      options: AddTorrentOptions;
+    }) => {
+      const res = await fetch("/api/torrents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ staged, ...options }),
+      });
+      const data = (await res.json().catch(() => ({}))) as AddTorrentResponse & { error?: string };
+      if (!res.ok) throw new Error(data.error ?? "Failed to add torrents");
+      return data.warning ? [data.warning] : [];
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["torrents"] });
+    },
+  });
+
+  return { addMagnet, addFile, addStaged };
 }

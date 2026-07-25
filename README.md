@@ -12,10 +12,11 @@ A modern, production-ready web interface for qBittorrent built with Next.js, Tai
 - 🧩 **Torrent detail tabs** — transfer stats, information, trackers, peers, HTTP sources, and content priorities
 - 🔗 **Magnet links** — paste one or multiple magnet links at once
 - 📁 **Torrent file upload** — drag-and-drop `.torrent` file upload with multi-file support
+- 🗂️ **Content preview before adding** — `.torrent` files are parsed locally and magnet metadata is prefetched, so you can pick which files to download before the torrent starts
 - 📊 **Live updates** — 2-second polling for real-time progress, speeds, and state
 - 🔍 **Filter & search** — filter by state (all/downloading/seeding/paused/completed/error)
 - 📦 **Bulk actions** — select multiple torrents and apply actions in bulk
-- 🌙 **Dark mode** — dark UI by default
+- 🌗 **Light & dark themes** — switch from the top bar or Settings, or follow the operating system
 - 📱 **Responsive** — works on desktop and mobile
 - 🛡️ **Proxy layer** — all qBittorrent API calls go through Next.js API routes (no CORS issues, credentials never reach the browser)
 
@@ -204,7 +205,9 @@ in an encrypted httpOnly cookie that is inaccessible to JavaScript.
 | `/api/auth/logout` | POST | Destroy session |
 | `/api/auth/me` | GET | Check authentication status |
 | `/api/torrents` | GET | List torrents (with filter support) |
-| `/api/torrents` | POST | Add magnet link or torrent file |
+| `/api/torrents` | POST | Add magnet link or torrent file (optionally skipping deselected files) |
+| `/api/torrents/prefetch` | POST | Read a torrent's file list before adding it (parses `.torrent` uploads, stages magnets) |
+| `/api/torrents/prefetch` | DELETE | Discard magnets that were staged for metadata but never added |
 | `/api/torrents/action` | POST | Perform action (pause/resume/delete/recheck/reannounce/top/up/down/bottom) |
 | `/api/torrents/details` | GET | Get detailed torrent data (properties/trackers/peers/web seeds/files) |
 | `/api/torrents/file-priority` | POST | Change torrent file priority in batch |
@@ -218,6 +221,7 @@ in an encrypted httpOnly cookie that is inaccessible to JavaScript.
 │   ├── preload.ts              # Electron preload script
 │   └── tsconfig.json           # TypeScript config for Electron main process
 ├── scripts/
+│   ├── generate-icons.py       # Renders the app icon (SVG master + PNG/ICO for every platform)
 │   └── prepare-standalone.mjs # Copies static/public into the Next.js standalone dir
 ├── .github/
 │   └── workflows/
@@ -225,7 +229,7 @@ in an encrypted httpOnly cookie that is inaccessible to JavaScript.
 ├── app/
 │   ├── layout.tsx              # Root layout with providers
 │   ├── page.tsx                # Login page
-│   ├── providers.tsx           # React Query provider
+│   ├── providers.tsx           # React Query provider + themed toaster
 │   ├── dashboard/
 │   │   └── page.tsx            # Main dashboard
 │   └── api/                    # API proxy routes
@@ -240,15 +244,24 @@ in an encrypted httpOnly cookie that is inaccessible to JavaScript.
 │   ├── layout/
 │   │   ├── Sidebar.tsx
 │   │   └── TopBar.tsx
+│   ├── theme/
+│   │   └── ThemeToggle.tsx     # Light/dark/system switcher
 │   └── torrents/
 │       ├── TorrentTable.tsx
 │       ├── TorrentRow.tsx
-│       └── AddTorrentModal.tsx
+│       ├── AddTorrentModal.tsx
+│       └── TorrentContentSelector.tsx  # File picker shown before a torrent is queued
 ├── hooks/
 │   ├── useTorrents.ts
+│   ├── useTorrentPrefetch.ts   # Reads torrent contents before adding
+│   ├── useTheme.ts
 │   └── useTransfer.ts
 ├── lib/
 │   ├── qbit-api.ts             # Server-side qBittorrent API client
+│   ├── bencode.ts              # Bencode decoder (info-hash preserving)
+│   ├── torrent-file.ts         # .torrent metadata parsing
+│   ├── file-tree.ts            # Groups a file list into a folder tree
+│   ├── theme.ts                # Theme preference store
 │   ├── session.ts              # iron-session configuration
 │   ├── types.ts                # TypeScript types
 │   └── utils.ts                # Format helpers

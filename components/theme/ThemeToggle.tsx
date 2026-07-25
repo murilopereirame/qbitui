@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { THEME_MODES, type ThemeMode } from "@/lib/theme";
-import { useTheme } from "./ThemeProvider";
+import { useTheme } from "@/hooks/useTheme";
 
 const MODE_LABELS: Record<ThemeMode, string> = {
   light: "Light",

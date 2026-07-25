@@ -126,6 +126,8 @@ export class QBitAPI {
     if (options.savepath) form.append("savepath", options.savepath);
     if (options.category) form.append("category", options.category);
     if (options.tags) form.append("tags", options.tags);
+    // qBittorrent v5 renamed "paused" to "stopped"; send both for compatibility.
+    if (options.paused) form.append("stopped", "true");
     if (options.paused) form.append("paused", "true");
     if (options.sequentialDownload) form.append("sequentialDownload", "true");
     if (options.firstLastPiecePrio) form.append("firstLastPiecePrio", "true");
@@ -222,6 +224,60 @@ export class QBitAPI {
     return this.fetchJson<TorrentFile[]>(`/api/v2/torrents/files?${params}`);
   }
 
+  async setCategory(hashes: string[], category: string): Promise<void> {
+    await this.formPost("/api/v2/torrents/setCategory", { hashes: hashes.join("|"), category });
+  }
+
+  async addTags(hashes: string[], tags: string): Promise<void> {
+    await this.formPost("/api/v2/torrents/addTags", { hashes: hashes.join("|"), tags });
+  }
+
+  async setLocation(hashes: string[], location: string): Promise<void> {
+    await this.formPost("/api/v2/torrents/setLocation", { hashes: hashes.join("|"), location });
+  }
+
+  /**
+   * Waits for a freshly added torrent to show up.  `hint` is the info hash we
+   * expect; when it is unknown (or wrong, as for v2-only torrents) we fall
+   * back to whichever hash appeared that was not there before.
+   */
+  async waitForTorrentHash(
+    knownHashes: Set<string>,
+    hint: string | null,
+    timeoutMs = 15_000
+  ): Promise<string | null> {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const hashes = (await this.getTorrents()).map((torrent) => torrent.hash);
+      if (hint && hashes.includes(hint)) return hint;
+      const added = hashes.find((hash) => !knownHashes.has(hash));
+      if (added) return added;
+      await delay(400);
+    }
+    return null;
+  }
+
+  /**
+   * Waits for a torrent's metadata to arrive.  Magnet links start out with no
+   * file list at all, which is exactly what this is used to wait for.
+   */
+  async waitForTorrentFiles(hash: string, timeoutMs = 60_000): Promise<TorrentFile[]> {
+    const deadline = Date.now() + timeoutMs;
+    let lastError: unknown = null;
+    while (Date.now() < deadline) {
+      try {
+        const files = await this.getTorrentFiles(hash);
+        if (files.length > 0) return files;
+      } catch (error) {
+        // The torrent may not be registered yet; keep polling until timeout.
+        lastError = error;
+      }
+      await delay(700);
+    }
+    if (lastError) throw lastError;
+    return [];
+  }
+
   async setFilePriority(hash: string, fileIds: number[], priority: number): Promise<void> {
     const form = new FormData();
     form.append("hash", hash);
@@ -233,6 +289,17 @@ export class QBitAPI {
       body: form,
     });
     if (!res.ok) throw new Error(`Failed to change file priority: ${res.status}`);
+  }
+
+  private async formPost(path: string, fields: Record<string, string>): Promise<void> {
+    const form = new FormData();
+    for (const [key, value] of Object.entries(fields)) form.append(key, value);
+    const res = await this.loggedFetch(this.url(path), {
+      method: "POST",
+      headers: this.headers,
+      body: form,
+    });
+    if (!res.ok) throw new Error(`Request to ${path} failed: ${res.status}`);
   }
 
   private async torrentAction(path: string, hashes: string[]): Promise<void> {
@@ -277,6 +344,10 @@ export class QBitAPI {
     if (!res.ok) throw new Error(`Failed to fetch ${path}: ${res.status}`);
     return res.json() as Promise<T>;
   }
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export function validateHost(host: string): string {
