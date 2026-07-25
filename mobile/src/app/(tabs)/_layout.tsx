@@ -2,17 +2,21 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Tabs } from 'expo-router';
 import React from 'react';
 
+import { useTheme } from '@/hooks/use-theme';
+
 export default function TabsLayout() {
+  const colors = useTheme();
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#030712',
-          borderTopColor: '#1f2937',
+          backgroundColor: colors.chrome,
+          borderTopColor: colors.border,
         },
-        tabBarActiveTintColor: '#3b82f6',
-        tabBarInactiveTintColor: '#6b7280',
+        tabBarActiveTintColor: colors.accent,
+        tabBarInactiveTintColor: colors.textSubtle,
       }}>
       <Tabs.Screen
         name="index"

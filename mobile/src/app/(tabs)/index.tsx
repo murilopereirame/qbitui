@@ -24,7 +24,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
 import { TorrentActionSheet } from '@/components/TorrentActionSheet';
+import { stateColor, type ThemeColors } from '@/constants/theme';
 import { useTorrentAction, useTorrents, useTransfer } from '@/hooks/use-qbit';
+import { useTheme } from '@/hooks/use-theme';
+import { useThemedStyles } from '@/hooks/use-themed-styles';
 import { Torrent, TorrentAction, TorrentFilter } from '@/lib/types';
 import { formatBytes, formatETA, formatRatio, formatSpeed, getStateColor, getStateLabel, toPercent } from '@/lib/utils';
 import { SortField, useUIStore } from '@/store';
@@ -67,19 +70,10 @@ const FILTERS: { key: TorrentFilter; label: string }[] = [
   { key: 'error', label: 'Error' },
 ];
 
-const STATE_COLORS: Record<string, string> = {
-  blue: '#3b82f6',
-  green: '#22c55e',
-  yellow: '#eab308',
-  gray: '#6b7280',
-  purple: '#a855f7',
-  orange: '#f97316',
-  red: '#ef4444',
-  cyan: '#06b6d4',
-};
-
 export default function TorrentsScreen() {
   const router = useRouter();
+  const colors = useTheme();
+  const styles = useThemedStyles(createStyles);
   const {
     filter,
     setFilter,
@@ -160,11 +154,11 @@ export default function TorrentsScreen() {
         {selectionMode ? (<>
           <View style={styles.selectionBar}>
             <Pressable onPress={triggerSelectionExit} hitSlop={8} style={styles.selBarIconBtn}>
-              <MaterialIcons name="close" size={22} color="#e2e8f0" />
+              <MaterialIcons name="close" size={22} color={colors.text} />
             </Pressable>
             <Text style={styles.selBarCount}>{selectedHashes.size} selected</Text>
             <Pressable onPress={toggleSelectAll} hitSlop={8} style={styles.selBarIconBtn}>
-              <MaterialIcons name={allSelected ? 'done-all' : 'select-all'} size={22} color="#e2e8f0" />
+              <MaterialIcons name={allSelected ? 'done-all' : 'select-all'} size={22} color={colors.text} />
             </Pressable>
           </View>
           <View style={styles.selActionsWrap}>
@@ -184,7 +178,7 @@ export default function TorrentsScreen() {
                     ]}
                     disabled={disabled}
                     onPress={() => bulkAction(action)}>
-                    <MaterialIcons name={icon} size={18} color={danger ? '#fca5a5' : '#e2e8f0'} />
+                    <MaterialIcons name={icon} size={18} color={danger ? colors.dangerText : colors.text} />
                     <Text style={[styles.selActionText, danger && styles.selActionTextDanger]}>
                       {label}
                     </Text>
@@ -199,10 +193,10 @@ export default function TorrentsScreen() {
             <Text style={styles.headerTitle}>qbitUI</Text>
             {isError ? (
               <View style={styles.disconnected}>
-                <MaterialIcons name="wifi-off" size={14} color="#ef4444" />
+                <MaterialIcons name="wifi-off" size={14} color={colors.danger} />
                 <Text style={styles.disconnectedText}>Disconnected</Text>
                 <Pressable onPress={() => refetch()} style={styles.reconnectBtn} hitSlop={8}>
-                  <MaterialIcons name="refresh" size={18} color="#ef4444" />
+                  <MaterialIcons name="refresh" size={18} color={colors.danger} />
                 </Pressable>
               </View>
             ) : (
@@ -222,7 +216,7 @@ export default function TorrentsScreen() {
         <TextInput
           style={styles.search}
           placeholder="Search torrents…"
-          placeholderTextColor="#555"
+          placeholderTextColor={colors.placeholder}
           value={search}
           onChangeText={setSearch}
           autoCapitalize="none"
@@ -255,16 +249,16 @@ export default function TorrentsScreen() {
         <Text style={styles.countText}>
           {filteredTorrents.length} torrent{filteredTorrents.length !== 1 ? 's' : ''}
         </Text>
-        {isFetching && !refreshing && <ActivityIndicator size="small" color="#3b82f6" />}
+        {isFetching && !refreshing && <ActivityIndicator size="small" color={colors.accent} />}
         <Pressable onPress={() => setSortModalVisible(true)} style={styles.sortBtn} hitSlop={8}>
-          <MaterialIcons name="sort" size={16} color="#6b7280" />
+          <MaterialIcons name="sort" size={16} color={colors.textSubtle} />
           <Text style={styles.sortBtnText}>
             {SORT_OPTIONS.find((o) => o.field === sortField)?.label ?? 'Sort'}
           </Text>
           <MaterialIcons
             name={sortDir === 'asc' ? 'arrow-upward' : 'arrow-downward'}
             size={12}
-            color="#6b7280"
+            color={colors.textSubtle}
           />
         </Pressable>
       </View>
@@ -295,7 +289,7 @@ export default function TorrentsScreen() {
                     <MaterialIcons
                       name={sortDir === 'asc' ? 'arrow-upward' : 'arrow-downward'}
                       size={16}
-                      color="#3b82f6"
+                      color={colors.accent}
                     />
                   )}
                 </Pressable>
@@ -315,7 +309,7 @@ export default function TorrentsScreen() {
         </View>
       ) : isLoading ? (
         <View style={styles.centered}>
-          <ActivityIndicator color="#3b82f6" size="large" />
+          <ActivityIndicator color={colors.accent} size="large" />
         </View>
       ) : (
         <FlatList
@@ -326,7 +320,7 @@ export default function TorrentsScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor="#3b82f6"
+              tintColor={colors.accent}
             />
           }
           contentContainerStyle={filteredTorrents.length === 0 ? styles.emptyContainer : undefined}
@@ -336,8 +330,7 @@ export default function TorrentsScreen() {
             </View>
           }
           renderItem={({ item: t }) => {
-            const stateColorKey = getStateColor(t.state);
-            const stateColor = STATE_COLORS[stateColorKey] ?? '#6b7280';
+            const badgeColor = stateColor(colors, getStateColor(t.state));
             const isSelected = selectedHashes.has(t.hash);
 
             return (
@@ -356,13 +349,13 @@ export default function TorrentsScreen() {
                   {selectionMode && (
                     <Animated.View entering={ZoomIn.duration(200)} exiting={ZoomOut.duration(150)}>
                       <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-                        {isSelected && <MaterialIcons name="check" size={14} color="#fff" />}
+                        {isSelected && <MaterialIcons name="check" size={14} color={colors.textInverted} />}
                       </View>
                     </Animated.View>
                   )}
                   <Text style={styles.torrentName} numberOfLines={1}>{t.name}</Text>
-                  <View style={[styles.badge, { borderColor: stateColor }]}>
-                    <Text style={[styles.badgeText, { color: stateColor }]}>
+                  <View style={[styles.badge, { borderColor: badgeColor }]}>
+                    <Text style={[styles.badgeText, { color: badgeColor }]}>
                       {getStateLabel(t.state)}
                     </Text>
                   </View>
@@ -428,204 +421,205 @@ export default function TorrentsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#030712' },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1f2937',
-  },
-  headerTitle: { color: '#fff', fontSize: 20, fontWeight: '700' },
-  speeds: { flexDirection: 'row', gap: 12 },
-  speedDl: { color: '#3b82f6', fontSize: 13, fontWeight: '600' },
-  speedUl: { color: '#22c55e', fontSize: 13, fontWeight: '600' },
-  disconnected: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  disconnectedText: { color: '#ef4444', fontSize: 13, fontWeight: '600' },
-  reconnectBtn: { padding: 2 },
-  selectionBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    backgroundColor: '#0f1e3d',
-    borderBottomWidth: 1,
-    borderBottomColor: '#1e3a5f',
-  },
-  selBarIconBtn: { padding: 2 },
-  selBarCount: { color: '#fff', fontSize: 16, fontWeight: '700', flex: 1 },
-  selActionsWrap: {
-    backgroundColor: '#0b1730',
-    borderBottomWidth: 1,
-    borderBottomColor: '#1e3a5f',
-  },
-  selActionsRow: { paddingHorizontal: 10, paddingVertical: 8, gap: 8, alignItems: 'center' },
-  selActionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 8,
-    backgroundColor: '#1f2937',
-    borderWidth: 1,
-    borderColor: '#374151',
-  },
-  selActionBtnDanger: { backgroundColor: '#450a0a', borderColor: '#7f1d1d' },
-  selActionBtnDisabled: { opacity: 0.4 },
-  selActionText: { color: '#e2e8f0', fontSize: 13, fontWeight: '600' },
-  selActionTextDanger: { color: '#fca5a5' },
-  searchWrap: { paddingHorizontal: 12, paddingVertical: 8 },
-  search: {
-    backgroundColor: '#111827',
-    borderWidth: 1,
-    borderColor: '#374151',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    color: '#fff',
-    fontSize: 14,
-  },
-  filterWrap: {
-    minHeight: 48,
-    justifyContent: 'center',
-  },
-  filterScroll: { flexGrow: 0 },
-  filterRow: { paddingHorizontal: 12, paddingVertical: 6, gap: 8, alignItems: 'center' },
-  filterChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: '#111827',
-    borderWidth: 1,
-    borderColor: '#374151',
-  },
-  filterChipActive: { backgroundColor: '#1d4ed8', borderColor: '#3b82f6' },
-  filterLabel: { color: '#9ca3af', fontSize: 13, fontWeight: '500' },
-  filterLabelActive: { color: '#93c5fd' },
-  countRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingBottom: 4,
-  },
-  countText: { color: '#6b7280', fontSize: 12 },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  emptyContainer: { flexGrow: 1 },
-  errorText: { color: '#ef4444', marginBottom: 12, fontWeight: '600' },
-  retryBtn: {
-    backgroundColor: '#1f2937',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  retryText: { color: '#fff' },
-  emptyText: { color: '#6b7280', fontSize: 15 },
-  torrentRow: {
-    backgroundColor: '#0f172a',
-    marginHorizontal: 12,
-    marginVertical: 4,
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#1f2937',
-    gap: 8,
-  },
-  torrentRowSelected: {
-    borderColor: '#3b82f6',
-    backgroundColor: '#0f1e3d',
-  },
-  torrentTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    borderWidth: 2,
-    borderColor: '#374151',
-    backgroundColor: '#111827',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkboxSelected: {
-    borderColor: '#3b82f6',
-    backgroundColor: '#2563eb',
-  },
-  torrentName: { color: '#f1f5f9', fontSize: 14, fontWeight: '600', flex: 1 },
-  badge: {
-    borderWidth: 1,
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  badgeText: { fontSize: 11, fontWeight: '600' },
-  progressBg: {
-    height: 3,
-    backgroundColor: '#1f2937',
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  progressFill: { height: '100%', backgroundColor: '#3b82f6', borderRadius: 2 },
-  torrentMeta: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
-  metaText: { color: '#9ca3af', fontSize: 12 },
-  metaDl: { color: '#3b82f6', fontSize: 12 },
-  metaUl: { color: '#22c55e', fontSize: 12 },
-  metaRatio: { color: '#a855f7', fontSize: 12 },
-  sortBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginLeft: 'auto',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    backgroundColor: '#111827',
-    borderWidth: 1,
-    borderColor: '#374151',
-  },
-  sortBtnText: { color: '#6b7280', fontSize: 12 },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'flex-end',
-  },
-  sortSheet: {
-    backgroundColor: '#111827',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    paddingTop: 16,
-    paddingBottom: 32,
-    paddingHorizontal: 8,
-    borderTopWidth: 1,
-    borderColor: '#1f2937',
-  },
-  sortSheetTitle: {
-    color: '#6b7280',
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    paddingHorizontal: 12,
-    paddingBottom: 8,
-  },
-  sortOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 10,
-  },
-  sortOptionActive: { backgroundColor: '#1e3a5f' },
-  sortOptionText: { color: '#e2e8f0', fontSize: 15 },
-  sortOptionTextActive: { color: '#93c5fd', fontWeight: '600' },
-});
+const createStyles = (c: ThemeColors) =>
+StyleSheet.create({
+    safeArea: { flex: 1, backgroundColor: c.background },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: c.border,
+    },
+    headerTitle: { color: c.text, fontSize: 20, fontWeight: '700' },
+    speeds: { flexDirection: 'row', gap: 12 },
+    speedDl: { color: c.accent, fontSize: 13, fontWeight: '600' },
+    speedUl: { color: c.stateGreen, fontSize: 13, fontWeight: '600' },
+    disconnected: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    disconnectedText: { color: c.danger, fontSize: 13, fontWeight: '600' },
+    reconnectBtn: { padding: 2 },
+    selectionBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+      backgroundColor: c.selectionBar,
+      borderBottomWidth: 1,
+      borderBottomColor: c.selectionBorder,
+    },
+    selBarIconBtn: { padding: 2 },
+    selBarCount: { color: c.text, fontSize: 16, fontWeight: '700', flex: 1 },
+    selActionsWrap: {
+      backgroundColor: c.selectionSurface,
+      borderBottomWidth: 1,
+      borderBottomColor: c.selectionBorder,
+    },
+    selActionsRow: { paddingHorizontal: 10, paddingVertical: 8, gap: 8, alignItems: 'center' },
+    selActionBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      borderRadius: 8,
+      backgroundColor: c.surfaceRaised,
+      borderWidth: 1,
+      borderColor: c.borderStrong,
+    },
+    selActionBtnDanger: { backgroundColor: c.dangerSoft, borderColor: c.dangerBorder },
+    selActionBtnDisabled: { opacity: 0.4 },
+    selActionText: { color: c.text, fontSize: 13, fontWeight: '600' },
+    selActionTextDanger: { color: c.dangerText },
+    searchWrap: { paddingHorizontal: 12, paddingVertical: 8 },
+    search: {
+      backgroundColor: c.surface,
+      borderWidth: 1,
+      borderColor: c.borderStrong,
+      borderRadius: 10,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      color: c.text,
+      fontSize: 14,
+    },
+    filterWrap: {
+      minHeight: 48,
+      justifyContent: 'center',
+    },
+    filterScroll: { flexGrow: 0 },
+    filterRow: { paddingHorizontal: 12, paddingVertical: 6, gap: 8, alignItems: 'center' },
+    filterChip: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 20,
+      backgroundColor: c.surface,
+      borderWidth: 1,
+      borderColor: c.borderStrong,
+    },
+    filterChipActive: { backgroundColor: c.accentSoft, borderColor: c.accentBorder },
+    filterLabel: { color: c.textSecondary, fontSize: 13, fontWeight: '500' },
+    filterLabelActive: { color: c.accentText },
+    countRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 16,
+      paddingBottom: 4,
+    },
+    countText: { color: c.textSubtle, fontSize: 12 },
+    centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+    emptyContainer: { flexGrow: 1 },
+    errorText: { color: c.danger, marginBottom: 12, fontWeight: '600' },
+    retryBtn: {
+      backgroundColor: c.surfaceRaised,
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderRadius: 8,
+    },
+    retryText: { color: c.text },
+    emptyText: { color: c.textSubtle, fontSize: 15 },
+    torrentRow: {
+      backgroundColor: c.card,
+      marginHorizontal: 12,
+      marginVertical: 4,
+      borderRadius: 12,
+      padding: 12,
+      borderWidth: 1,
+      borderColor: c.border,
+      gap: 8,
+    },
+    torrentRowSelected: {
+      borderColor: c.accentBorder,
+      backgroundColor: c.selectionBar,
+    },
+    torrentTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 8,
+    },
+    checkbox: {
+      width: 20,
+      height: 20,
+      borderRadius: 4,
+      borderWidth: 2,
+      borderColor: c.borderStrong,
+      backgroundColor: c.surface,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    checkboxSelected: {
+      borderColor: c.accentBorder,
+      backgroundColor: c.accentStrong,
+    },
+    torrentName: { color: c.text, fontSize: 14, fontWeight: '600', flex: 1 },
+    badge: {
+      borderWidth: 1,
+      borderRadius: 6,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+    },
+    badgeText: { fontSize: 11, fontWeight: '600' },
+    progressBg: {
+      height: 3,
+      backgroundColor: c.surfaceRaised,
+      borderRadius: 2,
+      overflow: 'hidden',
+    },
+    progressFill: { height: '100%', backgroundColor: c.accent, borderRadius: 2 },
+    torrentMeta: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
+    metaText: { color: c.textSecondary, fontSize: 12 },
+    metaDl: { color: c.accent, fontSize: 12 },
+    metaUl: { color: c.stateGreen, fontSize: 12 },
+    metaRatio: { color: c.statePurple, fontSize: 12 },
+    sortBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      marginLeft: 'auto',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 6,
+      backgroundColor: c.surface,
+      borderWidth: 1,
+      borderColor: c.borderStrong,
+    },
+    sortBtnText: { color: c.textSubtle, fontSize: 12 },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: c.overlay,
+      justifyContent: 'flex-end',
+    },
+    sortSheet: {
+      backgroundColor: c.surface,
+      borderTopLeftRadius: 16,
+      borderTopRightRadius: 16,
+      paddingTop: 16,
+      paddingBottom: 32,
+      paddingHorizontal: 8,
+      borderTopWidth: 1,
+      borderColor: c.border,
+    },
+    sortSheetTitle: {
+      color: c.textSubtle,
+      fontSize: 12,
+      fontWeight: '600',
+      textTransform: 'uppercase',
+      letterSpacing: 1,
+      paddingHorizontal: 12,
+      paddingBottom: 8,
+    },
+    sortOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      borderRadius: 10,
+    },
+    sortOptionActive: { backgroundColor: c.accentSoft },
+    sortOptionText: { color: c.text, fontSize: 15 },
+    sortOptionTextActive: { color: c.accentText, fontWeight: '600' },
+  });

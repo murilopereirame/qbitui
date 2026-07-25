@@ -16,22 +16,14 @@ import {
   View,
 } from 'react-native';
 
+import { stateColor as stateTokenColor, type ThemeColors } from '@/constants/theme';
 import { useApi, useTorrentAction } from '@/hooks/use-qbit';
+import { useTheme } from '@/hooks/use-theme';
+import { useThemedStyles } from '@/hooks/use-themed-styles';
 import { Torrent, TorrentAction } from '@/lib/types';
 import { FILTER_STATES, getStateColor, getStateLabel } from '@/lib/utils';
 
 type MaterialIconName = React.ComponentProps<typeof MaterialIcons>['name'];
-
-const STATE_COLORS: Record<string, string> = {
-  blue: '#3b82f6',
-  green: '#22c55e',
-  yellow: '#eab308',
-  gray: '#6b7280',
-  purple: '#a855f7',
-  orange: '#f97316',
-  red: '#ef4444',
-  cyan: '#06b6d4',
-};
 
 interface Props {
   /** The torrent the sheet acts on, or null when hidden. */
@@ -57,6 +49,8 @@ function sanitizeFileName(name: string): string {
 }
 
 export function TorrentActionSheet({ torrent, onClose, onSelect, onDelete }: Props) {
+  const styles = useThemedStyles(createStyles);
+  const colors = useTheme();
   const api = useApi();
   const { mutate: doAction } = useTorrentAction();
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -127,7 +121,7 @@ export function TorrentActionSheet({ torrent, onClose, onSelect, onDelete }: Pro
   }
 
   const isPaused = torrent ? FILTER_STATES.paused.includes(torrent.state) : false;
-  const stateColor = torrent ? STATE_COLORS[getStateColor(torrent.state)] ?? '#6b7280' : '#6b7280';
+  const stateColor = torrent ? stateTokenColor(colors, getStateColor(torrent.state)) : colors.stateGray;
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
@@ -151,7 +145,7 @@ export function TorrentActionSheet({ torrent, onClose, onSelect, onDelete }: Pro
 
               {feedback && (
                 <View style={styles.feedback}>
-                  <MaterialIcons name="check-circle" size={16} color="#22c55e" />
+                  <MaterialIcons name="check-circle" size={16} color={colors.stateGreen} />
                   <Text style={styles.feedbackText}>{feedback}</Text>
                 </View>
               )}
@@ -191,7 +185,7 @@ export function TorrentActionSheet({ torrent, onClose, onSelect, onDelete }: Pro
                   icon="download"
                   label="Export .torrent"
                   onPress={exportTorrent}
-                  trailing={exporting ? <ActivityIndicator size="small" color="#93c5fd" /> : undefined}
+                  trailing={exporting ? <ActivityIndicator size="small" color={colors.accentText} /> : undefined}
                   disabled={exporting}
                 />
                 <ListRow
@@ -236,9 +230,11 @@ function IconAction({
   label: string;
   onPress: () => void;
 }) {
+  const styles = useThemedStyles(createStyles);
+  const colors = useTheme();
   return (
     <Pressable style={styles.iconAction} onPress={onPress}>
-      <MaterialIcons name={icon} size={22} color="#e2e8f0" />
+      <MaterialIcons name={icon} size={22} color={colors.text} />
       <Text style={styles.iconActionLabel}>{label}</Text>
     </Pressable>
   );
@@ -259,115 +255,118 @@ function ListRow({
   disabled?: boolean;
   trailing?: React.ReactNode;
 }) {
+  const styles = useThemedStyles(createStyles);
+  const colors = useTheme();
   return (
     <Pressable
       style={[styles.listRow, disabled && styles.listRowDisabled]}
       onPress={onPress}
       disabled={disabled}>
-      <MaterialIcons name={icon} size={20} color={danger ? '#fca5a5' : '#cbd5e1'} />
+      <MaterialIcons name={icon} size={20} color={danger ? colors.dangerText : colors.textSecondary} />
       <Text style={[styles.listLabel, danger && styles.listLabelDanger]}>{label}</Text>
       <View style={styles.listTrailing}>{trailing}</View>
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: '#0b1120',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 20,
-    borderTopWidth: 1,
-    borderColor: '#1f2937',
-    maxHeight: '85%',
-  },
-  handle: {
-    alignSelf: 'center',
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#374151',
-    marginBottom: 12,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    marginBottom: 8,
-  },
-  title: { color: '#f1f5f9', fontSize: 15, fontWeight: '700', flex: 1 },
-  badge: {
-    borderWidth: 1,
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  badgeText: { fontSize: 11, fontWeight: '600' },
-  feedback: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#0f1e3d',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    marginBottom: 8,
-  },
-  feedbackText: { color: '#bbf7d0', fontSize: 13, fontWeight: '600' },
-  scroll: { flexGrow: 0 },
-  scrollContent: { paddingBottom: 8 },
-  sectionLabel: {
-    color: '#6b7280',
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginTop: 4,
-    marginBottom: 8,
-  },
-  iconRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 8,
-  },
-  iconAction: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: '#111827',
-    borderWidth: 1,
-    borderColor: '#1f2937',
-  },
-  iconActionLabel: { color: '#cbd5e1', fontSize: 11, fontWeight: '600' },
-  divider: { height: 1, backgroundColor: '#1f2937', marginVertical: 8 },
-  listRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 4,
-  },
-  listRowDisabled: { opacity: 0.5 },
-  listLabel: { color: '#e2e8f0', fontSize: 15, fontWeight: '500', flex: 1 },
-  listLabelDanger: { color: '#fca5a5' },
-  listTrailing: { minWidth: 20, alignItems: 'flex-end' },
-  cancelBtn: {
-    marginTop: 8,
-    paddingVertical: 13,
-    borderRadius: 12,
-    backgroundColor: '#111827',
-    borderWidth: 1,
-    borderColor: '#1f2937',
-    alignItems: 'center',
-  },
-  cancelText: { color: '#9ca3af', fontSize: 15, fontWeight: '600' },
-});
+const createStyles = (c: ThemeColors) =>
+StyleSheet.create({
+    overlay: {
+      flex: 1,
+      backgroundColor: c.overlay,
+      justifyContent: 'flex-end',
+    },
+    sheet: {
+      backgroundColor: c.chrome,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      paddingHorizontal: 16,
+      paddingTop: 8,
+      paddingBottom: 20,
+      borderTopWidth: 1,
+      borderColor: c.border,
+      maxHeight: '85%',
+    },
+    handle: {
+      alignSelf: 'center',
+      width: 40,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: c.borderStrong,
+      marginBottom: 12,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 10,
+      marginBottom: 8,
+    },
+    title: { color: c.text, fontSize: 15, fontWeight: '700', flex: 1 },
+    badge: {
+      borderWidth: 1,
+      borderRadius: 6,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+    },
+    badgeText: { fontSize: 11, fontWeight: '600' },
+    feedback: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: c.selectionBar,
+      borderRadius: 8,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      marginBottom: 8,
+    },
+    feedbackText: { color: c.stateGreen, fontSize: 13, fontWeight: '600' },
+    scroll: { flexGrow: 0 },
+    scrollContent: { paddingBottom: 8 },
+    sectionLabel: {
+      color: c.textSubtle,
+      fontSize: 12,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      marginTop: 4,
+      marginBottom: 8,
+    },
+    iconRow: {
+      flexDirection: 'row',
+      gap: 8,
+      marginBottom: 8,
+    },
+    iconAction: {
+      flex: 1,
+      alignItems: 'center',
+      gap: 4,
+      paddingVertical: 10,
+      borderRadius: 10,
+      backgroundColor: c.surface,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    iconActionLabel: { color: c.textSecondary, fontSize: 11, fontWeight: '600' },
+    divider: { height: 1, backgroundColor: c.border, marginVertical: 8 },
+    listRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingVertical: 12,
+      paddingHorizontal: 4,
+    },
+    listRowDisabled: { opacity: 0.5 },
+    listLabel: { color: c.text, fontSize: 15, fontWeight: '500', flex: 1 },
+    listLabelDanger: { color: c.dangerText },
+    listTrailing: { minWidth: 20, alignItems: 'flex-end' },
+    cancelBtn: {
+      marginTop: 8,
+      paddingVertical: 13,
+      borderRadius: 12,
+      backgroundColor: c.surface,
+      borderWidth: 1,
+      borderColor: c.border,
+      alignItems: 'center',
+    },
+    cancelText: { color: c.textSecondary, fontSize: 15, fontWeight: '600' },
+  });

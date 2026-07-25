@@ -2,11 +2,13 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
-import { useColorScheme } from 'react-native';
 
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { logger } from '@/lib/logger';
 import { useAuthStore } from '@/store';
+import { useThemeStore } from '@/store/theme';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -57,10 +59,17 @@ function AuthGuard() {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const loadThemeMode = useThemeStore((s) => s.loadMode);
+
+  // Restore the saved light/dark/system preference on launch.
+  useEffect(() => {
+    loadThemeMode();
+  }, [loadThemeMode]);
 
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
         <AuthGuard />
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="login" />

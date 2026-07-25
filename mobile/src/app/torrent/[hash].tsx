@@ -13,13 +13,18 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import type { ThemeColors } from '@/constants/theme';
 import { useSetTorrentFilePriority, useTorrentDetails, useTorrents } from '@/hooks/use-qbit';
+import { useTheme } from '@/hooks/use-theme';
+import { useThemedStyles } from '@/hooks/use-themed-styles';
 import { formatBytes, formatDate, formatETA, formatRatio, formatSpeed, toPercent } from '@/lib/utils';
 import { TorrentFile } from '@/lib/types';
 
 type Tab = 'properties' | 'trackers' | 'files';
 
 export default function TorrentDetailsScreen() {
+  const styles = useThemedStyles(createStyles);
+  const colors = useTheme();
   const { hash } = useLocalSearchParams<{ hash: string }>();
   const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState<Tab>('properties');
@@ -123,7 +128,7 @@ export default function TorrentDetailsScreen() {
       {activeTab === 'properties' && (
         <ScrollView contentContainerStyle={styles.tabContent}>
           {properties.isLoading ? (
-            <ActivityIndicator color="#3b82f6" style={{ margin: 24 }} />
+            <ActivityIndicator color={colors.accent} style={{ margin: 24 }} />
           ) : properties.data ? (
             <>
               <PropRow label="Save Path" value={properties.data.save_path} />
@@ -158,7 +163,7 @@ export default function TorrentDetailsScreen() {
           contentContainerStyle={styles.tabContent}
           ListEmptyComponent={
             trackers.isLoading ? (
-              <ActivityIndicator color="#3b82f6" style={{ margin: 24 }} />
+              <ActivityIndicator color={colors.accent} style={{ margin: 24 }} />
             ) : (
               <Text style={styles.noData}>No trackers</Text>
             )
@@ -199,7 +204,7 @@ export default function TorrentDetailsScreen() {
             }
             ListEmptyComponent={
               files.isLoading ? (
-                <ActivityIndicator color="#3b82f6" style={{ margin: 24 }} />
+                <ActivityIndicator color={colors.accent} style={{ margin: 24 }} />
               ) : (
                 <Text style={styles.noData}>No files</Text>
               )
@@ -310,232 +315,231 @@ const FILE_PRIORITIES = [
 ];
 
 function PropRow({ label, value }: { label: string; value: string }) {
+  const styles = useThemedStyles(createStyles);
   return (
-    <View style={propStyles.row}>
-      <Text style={propStyles.label}>{label}</Text>
-      <Text style={propStyles.value} selectable>{value}</Text>
+    <View style={styles.propRow}>
+      <Text style={styles.propLabel}>{label}</Text>
+      <Text style={styles.propValue} selectable>{value}</Text>
     </View>
   );
 }
 
-const propStyles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1f2937',
-    gap: 12,
-  },
-  label: { color: '#9ca3af', fontSize: 13, flex: 0.45 },
-  value: { color: '#f1f5f9', fontSize: 13, flex: 0.55, textAlign: 'right' },
-});
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#030712' },
-  tabs: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#1f2937',
-    backgroundColor: '#0f172a',
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  tabActive: {
-    borderBottomWidth: 2,
-    borderBottomColor: '#3b82f6',
-  },
-  tabText: { color: '#6b7280', fontSize: 14, fontWeight: '500' },
-  tabTextActive: { color: '#3b82f6' },
-  tabContent: { paddingBottom: 24 },
-  noData: { color: '#6b7280', textAlign: 'center', marginTop: 32 },
-  trackerRow: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1f2937',
-    gap: 4,
-  },
-  trackerUrl: { color: '#e2e8f0', fontSize: 13, fontWeight: '500' },
-  trackerMeta: { flexDirection: 'row', gap: 12 },
-  trackerMsg: { color: '#9ca3af', fontStyle: 'italic' },
-  metaText: { color: '#9ca3af', fontSize: 12 },
-  fileList: { flex: 1 },
-  selectAllRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1f2937',
-    gap: 10,
-  },
-  selectAllText: {
-    color: '#3b82f6',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  fileRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingLeft: 12,
-    paddingRight: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1f2937',
-  },
-  checkboxWrap: {
-    paddingTop: 2,
-    paddingRight: 10,
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    borderWidth: 2,
-    borderColor: '#374151',
-    backgroundColor: '#111827',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkboxSelected: {
-    borderColor: '#3b82f6',
-    backgroundColor: '#2563eb',
-  },
-  checkmark: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 14,
-  },
-  fileRowContent: {
-    flex: 1,
-    gap: 4,
-  },
-  fileName: { color: '#e2e8f0', fontSize: 13 },
-  fileMeta: { flexDirection: 'row', gap: 12 },
-  filePriorityRow: {
-    flexDirection: 'row',
-    gap: 8,
-    flexWrap: 'wrap',
-    marginTop: 4,
-  },
-  filePriorityButton: {
-    borderWidth: 1,
-    borderColor: '#374151',
-    backgroundColor: '#111827',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  filePriorityButtonActive: {
-    borderColor: '#3b82f6',
-    backgroundColor: '#1d4ed8',
-  },
-  filePriorityButtonDisabled: {
-    opacity: 0.6,
-  },
-  filePriorityText: { color: '#9ca3af', fontSize: 12, fontWeight: '500' },
-  filePriorityTextActive: { color: '#bfdbfe' },
-  progressBg: {
-    height: 3,
-    backgroundColor: '#1f2937',
-    borderRadius: 2,
-    overflow: 'hidden',
-    marginTop: 4,
-  },
-  progressFill: { height: '100%', backgroundColor: '#3b82f6', borderRadius: 2 },
-  bulkBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: '#111827',
-    borderTopWidth: 1,
-    borderTopColor: '#374151',
-    gap: 8,
-  },
-  bulkCount: {
-    color: '#9ca3af',
-    fontSize: 12,
-    fontWeight: '600',
-    minWidth: 64,
-  },
-  bulkPriorityButton: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#3b82f6',
-    backgroundColor: '#1e3a5f',
-    borderRadius: 8,
-    paddingVertical: 7,
-    alignItems: 'center',
-  },
-  bulkPriorityButtonDisabled: {
-    opacity: 0.5,
-  },
-  bulkPriorityText: {
-    color: '#93c5fd',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  bulkClear: {
-    padding: 6,
-  },
-  bulkClearText: {
-    color: '#6b7280',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'flex-end',
-  },
-  prioritySheet: {
-    backgroundColor: '#111827',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    paddingTop: 16,
-    paddingBottom: 32,
-    paddingHorizontal: 16,
-    gap: 4,
-    borderTopWidth: 1,
-    borderColor: '#374151',
-  },
-  sheetTitle: {
-    color: '#9ca3af',
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 8,
-    paddingHorizontal: 4,
-  },
-  sheetOption: {
-    paddingVertical: 14,
-    paddingHorizontal: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1f2937',
-  },
-  sheetOptionText: {
-    color: '#f1f5f9',
-    fontSize: 16,
-  },
-  sheetCancel: {
-    marginTop: 8,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  sheetCancelText: {
-    color: '#6b7280',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-});
+const createStyles = (c: ThemeColors) =>
+StyleSheet.create({
+    propRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: c.border,
+      gap: 12,
+    },
+    propLabel: { color: c.textSecondary, fontSize: 13, flex: 0.45 },
+    propValue: { color: c.text, fontSize: 13, flex: 0.55, textAlign: 'right' },
+    safeArea: { flex: 1, backgroundColor: c.background },
+    tabs: {
+      flexDirection: 'row',
+      borderBottomWidth: 1,
+      borderBottomColor: c.border,
+      backgroundColor: c.card,
+    },
+    tab: {
+      flex: 1,
+      paddingVertical: 12,
+      alignItems: 'center',
+    },
+    tabActive: {
+      borderBottomWidth: 2,
+      borderBottomColor: c.accent,
+    },
+    tabText: { color: c.textSubtle, fontSize: 14, fontWeight: '500' },
+    tabTextActive: { color: c.accent },
+    tabContent: { paddingBottom: 24 },
+    noData: { color: c.textSubtle, textAlign: 'center', marginTop: 32 },
+    trackerRow: {
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: c.border,
+      gap: 4,
+    },
+    trackerUrl: { color: c.text, fontSize: 13, fontWeight: '500' },
+    trackerMeta: { flexDirection: 'row', gap: 12 },
+    trackerMsg: { color: c.textSecondary, fontStyle: 'italic' },
+    metaText: { color: c.textSecondary, fontSize: 12 },
+    fileList: { flex: 1 },
+    selectAllRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: c.border,
+      gap: 10,
+    },
+    selectAllText: {
+      color: c.accent,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    fileRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      paddingLeft: 12,
+      paddingRight: 16,
+      paddingVertical: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: c.border,
+    },
+    checkboxWrap: {
+      paddingTop: 2,
+      paddingRight: 10,
+      justifyContent: 'flex-start',
+      alignItems: 'center',
+    },
+    checkbox: {
+      width: 20,
+      height: 20,
+      borderRadius: 4,
+      borderWidth: 2,
+      borderColor: c.borderStrong,
+      backgroundColor: c.surface,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    checkboxSelected: {
+      borderColor: c.accentBorder,
+      backgroundColor: c.accentStrong,
+    },
+    checkmark: {
+      color: '#ffffff',
+      fontSize: 11,
+      fontWeight: '700',
+      lineHeight: 14,
+    },
+    fileRowContent: {
+      flex: 1,
+      gap: 4,
+    },
+    fileName: { color: c.text, fontSize: 13 },
+    fileMeta: { flexDirection: 'row', gap: 12 },
+    filePriorityRow: {
+      flexDirection: 'row',
+      gap: 8,
+      flexWrap: 'wrap',
+      marginTop: 4,
+    },
+    filePriorityButton: {
+      borderWidth: 1,
+      borderColor: c.borderStrong,
+      backgroundColor: c.surface,
+      borderRadius: 8,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+    },
+    filePriorityButtonActive: {
+      borderColor: c.accentBorder,
+      backgroundColor: c.accentStrong,
+    },
+    filePriorityButtonDisabled: {
+      opacity: 0.6,
+    },
+    filePriorityText: { color: c.textSecondary, fontSize: 12, fontWeight: '500' },
+    filePriorityTextActive: { color: c.accentText },
+    progressBg: {
+      height: 3,
+      backgroundColor: c.surfaceRaised,
+      borderRadius: 2,
+      overflow: 'hidden',
+      marginTop: 4,
+    },
+    progressFill: { height: '100%', backgroundColor: c.accent, borderRadius: 2 },
+    bulkBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      backgroundColor: c.surface,
+      borderTopWidth: 1,
+      borderTopColor: c.borderStrong,
+      gap: 8,
+    },
+    bulkCount: {
+      color: c.textSecondary,
+      fontSize: 12,
+      fontWeight: '600',
+      minWidth: 64,
+    },
+    bulkPriorityButton: {
+      flex: 1,
+      borderWidth: 1,
+      borderColor: c.accentBorder,
+      backgroundColor: c.accentSoft,
+      borderRadius: 8,
+      paddingVertical: 7,
+      alignItems: 'center',
+    },
+    bulkPriorityButtonDisabled: {
+      opacity: 0.5,
+    },
+    bulkPriorityText: {
+      color: c.accentText,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    bulkClear: {
+      padding: 6,
+    },
+    bulkClearText: {
+      color: c.textSubtle,
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.6)',
+      justifyContent: 'flex-end',
+    },
+    prioritySheet: {
+      backgroundColor: c.surface,
+      borderTopLeftRadius: 16,
+      borderTopRightRadius: 16,
+      paddingTop: 16,
+      paddingBottom: 32,
+      paddingHorizontal: 16,
+      gap: 4,
+      borderTopWidth: 1,
+      borderColor: c.borderStrong,
+    },
+    sheetTitle: {
+      color: c.textSecondary,
+      fontSize: 12,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+      marginBottom: 8,
+      paddingHorizontal: 4,
+    },
+    sheetOption: {
+      paddingVertical: 14,
+      paddingHorizontal: 4,
+      borderBottomWidth: 1,
+      borderBottomColor: c.border,
+    },
+    sheetOptionText: {
+      color: c.text,
+      fontSize: 16,
+    },
+    sheetCancel: {
+      marginTop: 8,
+      paddingVertical: 14,
+      alignItems: 'center',
+    },
+    sheetCancelText: {
+      color: c.textSubtle,
+      fontSize: 15,
+      fontWeight: '600',
+    },
+  });

@@ -12,11 +12,11 @@ A modern, production-ready web interface for qBittorrent built with Next.js, Tai
 - 🧩 **Torrent detail tabs** — transfer stats, information, trackers, peers, HTTP sources, and content priorities
 - 🔗 **Magnet links** — paste one or multiple magnet links at once
 - 📁 **Torrent file upload** — drag-and-drop `.torrent` file upload with multi-file support
-- 🗂️ **Content preview before adding** — `.torrent` files are parsed locally and magnet metadata is prefetched, so you can pick which files to download before the torrent starts
+- 🗂️ **Content preview before adding** — `.torrent` files are parsed locally and magnet metadata is prefetched, so you can pick which files to download before the torrent starts (also available in the mobile app)
 - 📊 **Live updates** — 2-second polling for real-time progress, speeds, and state
 - 🔍 **Filter & search** — filter by state (all/downloading/seeding/paused/completed/error)
 - 📦 **Bulk actions** — select multiple torrents and apply actions in bulk
-- 🌗 **Light & dark themes** — switch from the top bar or Settings, or follow the operating system
+- 🌗 **Light & dark themes** — switch from the top bar or Settings, or follow the operating system (web, desktop and the Expo mobile app)
 - 📱 **Responsive** — works on desktop and mobile
 - 🛡️ **Proxy layer** — all qBittorrent API calls go through Next.js API routes (no CORS issues, credentials never reach the browser)
 

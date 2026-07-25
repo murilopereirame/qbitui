@@ -117,3 +117,29 @@ export function getStateColor(state: TorrentState): StateColor {
       return 'gray';
   }
 }
+
+/** Best-effort v1 info hash of a magnet link, used to locate it after adding. */
+export function magnetInfoHash(magnet: string): string | null {
+  const match = /xt=urn:btih:([a-zA-Z0-9]+)/.exec(magnet);
+  if (!match) return null;
+  const value = match[1];
+  if (/^[0-9a-fA-F]{40}$/.test(value)) return value.toLowerCase();
+  if (/^[A-Z2-7]{32}$/i.test(value)) return base32ToHex(value.toUpperCase());
+  return null;
+}
+
+const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+
+function base32ToHex(value: string): string | null {
+  let bits = '';
+  for (const char of value) {
+    const index = BASE32_ALPHABET.indexOf(char);
+    if (index < 0) return null;
+    bits += index.toString(2).padStart(5, '0');
+  }
+  let hex = '';
+  for (let i = 0; i + 8 <= bits.length; i += 8) {
+    hex += parseInt(bits.slice(i, i + 8), 2).toString(16).padStart(2, '0');
+  }
+  return hex.length === 40 ? hex : null;
+}
