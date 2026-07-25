@@ -9,7 +9,7 @@ A modern, production-ready web interface for qBittorrent built with Next.js, Tai
 - 🔑 **Desktop credential persistence** — encrypted credential storage in Electron for automatic re-login
 - 📋 **Torrent management** — add, pause, resume, delete, recheck, reannounce
 - ↕️ **Queue ordering controls** — move torrents top/up/down/bottom
-- 🧩 **Torrent detail tabs** — transfer stats, information, trackers, peers, HTTP sources, and content priorities
+- 🧩 **Torrent detail tabs** — transfer stats, information, trackers, peers, HTTP sources, and content priorities (the mobile app also graphs download/upload speed over the last minute)
 - 🔗 **Magnet links** — paste one or multiple magnet links at once
 - 📁 **Torrent file upload** — drag-and-drop `.torrent` file upload with multi-file support
 - 🗂️ **Content preview before adding** — `.torrent` files are parsed locally, and magnet links are looked up through a metadata API you configure in Settings, so you can pick which files to download before the torrent starts (also available in the mobile app)

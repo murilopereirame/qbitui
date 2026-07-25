@@ -13,8 +13,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { SpeedCharts } from '@/components/SpeedCharts';
 import type { ThemeColors } from '@/constants/theme';
 import { useSetTorrentFilePriority, useTorrentDetails, useTorrents } from '@/hooks/use-qbit';
+import { useSpeedHistory } from '@/hooks/use-speed-history';
 import { useTheme } from '@/hooks/use-theme';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
 import { formatBytes, formatDate, formatETA, formatRatio, formatSpeed, toPercent } from '@/lib/utils';
@@ -35,6 +37,8 @@ export default function TorrentDetailsScreen() {
   const torrent = torrents?.find((t) => t.hash === hash);
 
   const { properties, trackers, files } = useTorrentDetails(hash);
+  // The torrent list polls every 2s, which is what the graphs sample from.
+  const speedHistory = useSpeedHistory(torrent?.dlspeed ?? 0, torrent?.upspeed ?? 0);
   const { mutate: setFilePriority, isPending: isSettingFilePriority } = useSetTorrentFilePriority();
   const [pendingFileIndexes, setPendingFileIndexes] = useState<Set<number>>(new Set());
 
@@ -127,6 +131,11 @@ export default function TorrentDetailsScreen() {
       {/* Content */}
       {activeTab === 'properties' && (
         <ScrollView contentContainerStyle={styles.tabContent}>
+          <SpeedCharts
+            history={speedHistory}
+            dlSpeed={torrent?.dlspeed ?? properties.data?.dl_speed ?? 0}
+            upSpeed={torrent?.upspeed ?? properties.data?.up_speed ?? 0}
+          />
           {properties.isLoading ? (
             <ActivityIndicator color={colors.accent} style={{ margin: 24 }} />
           ) : properties.data ? (
