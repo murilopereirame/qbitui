@@ -77,37 +77,52 @@ export function getStateLabel(state: TorrentState): string {
   return labels[state] ?? state;
 }
 
+// Badge tints: the light theme needs a darker text shade to stay legible on
+// the same translucent background, hence the paired light/dark classes.
+const STATE_COLORS = {
+  blue: "bg-blue-500/15 text-blue-700 border-blue-500/30 dark:bg-blue-500/20 dark:text-blue-400",
+  green: "bg-green-500/15 text-green-700 border-green-500/30 dark:bg-green-500/20 dark:text-green-400",
+  yellow: "bg-yellow-500/15 text-yellow-700 border-yellow-500/30 dark:bg-yellow-500/20 dark:text-yellow-400",
+  gray: "bg-gray-500/15 text-gray-700 border-gray-500/30 dark:bg-gray-500/20 dark:text-gray-400",
+  purple: "bg-purple-500/15 text-purple-700 border-purple-500/30 dark:bg-purple-500/20 dark:text-purple-400",
+  orange: "bg-orange-500/15 text-orange-700 border-orange-500/30 dark:bg-orange-500/20 dark:text-orange-400",
+  red: "bg-red-500/15 text-red-700 border-red-500/30 dark:bg-red-500/20 dark:text-red-400",
+  cyan: "bg-cyan-500/15 text-cyan-700 border-cyan-500/30 dark:bg-cyan-500/20 dark:text-cyan-400",
+} as const;
+
+export const CATEGORY_BADGE_COLOR = STATE_COLORS.purple;
+
 export function getStateColor(state: TorrentState): string {
   switch (state) {
     case "downloading":
     case "forcedDL":
     case "metaDL":
-      return "bg-blue-500/20 text-blue-400 border-blue-500/30";
+      return STATE_COLORS.blue;
     case "uploading":
     case "forcedUP":
-      return "bg-green-500/20 text-green-400 border-green-500/30";
+      return STATE_COLORS.green;
     case "pausedDL":
     case "pausedUP":
     case "stoppedDL":
     case "stoppedUP":
-      return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30";
+      return STATE_COLORS.yellow;
     case "stalledDL":
     case "stalledUP":
-      return "bg-gray-500/20 text-gray-400 border-gray-500/30";
+      return STATE_COLORS.gray;
     case "checkingDL":
     case "checkingUP":
     case "checkingResumeData":
     case "allocating":
-      return "bg-purple-500/20 text-purple-400 border-purple-500/30";
+      return STATE_COLORS.purple;
     case "queuedDL":
     case "queuedUP":
-      return "bg-orange-500/20 text-orange-400 border-orange-500/30";
+      return STATE_COLORS.orange;
     case "error":
     case "missingFiles":
-      return "bg-red-500/20 text-red-400 border-red-500/30";
+      return STATE_COLORS.red;
     case "moving":
-      return "bg-cyan-500/20 text-cyan-400 border-cyan-500/30";
+      return STATE_COLORS.cyan;
     default:
-      return "bg-gray-500/20 text-gray-400 border-gray-500/30";
+      return STATE_COLORS.gray;
   }
 }

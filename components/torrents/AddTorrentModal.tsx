@@ -150,7 +150,7 @@ export function AddTorrentModal() {
   }
 
   const sharedOptions = (
-    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/10">
+    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-line">
       <div className="space-y-1.5">
         <Label>Save Path</Label>
         <Input placeholder="/downloads" value={savepath} onChange={(e) => setSavepath(e.target.value)} />
@@ -197,9 +197,9 @@ export function AddTorrentModal() {
                 onChange={(e) => { setMagnetText(e.target.value); setMagnetError(""); }}
                 className="min-h-[120px] font-mono text-xs"
               />
-              <p className="text-xs text-gray-500">One magnet link per line</p>
+              <p className="text-xs text-fg-subtle">One magnet link per line</p>
               {magnetError && (
-                <div className="flex items-center gap-2 text-red-400 text-sm">
+                <div className="flex items-center gap-2 text-negative text-sm">
                   <AlertCircle className="h-4 w-4 shrink-0" />
                   {magnetError}
                 </div>
@@ -227,11 +227,11 @@ export function AddTorrentModal() {
                 "border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors",
                 dragOver
                   ? "border-blue-500 bg-blue-500/10"
-                  : "border-white/10 hover:border-white/30 hover:bg-white/5"
+                  : "border-line hover:border-line-strong hover:bg-hover"
               )}
             >
-              <Upload className="mx-auto h-8 w-8 text-gray-500 mb-3" />
-              <p className="text-sm text-gray-400">Drop <code>.torrent</code> files here or click to browse</p>
+              <Upload className="mx-auto h-8 w-8 text-fg-subtle mb-3" />
+              <p className="text-sm text-fg-muted">Drop <code>.torrent</code> files here or click to browse</p>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -245,16 +245,16 @@ export function AddTorrentModal() {
             {files.length > 0 && (
               <div className="space-y-1.5">
                 <Label>Selected files ({files.length})</Label>
-                <div className="max-h-36 overflow-y-auto space-y-1 rounded-lg border border-white/10 p-2">
+                <div className="max-h-36 overflow-y-auto space-y-1 rounded-lg border border-line p-2">
                   {files.map((f, i) => (
-                    <div key={i} className="flex items-center gap-2 py-1 px-2 rounded hover:bg-white/5 group">
-                      <FileText className="h-3.5 w-3.5 text-gray-500 shrink-0" />
-                      <span className="text-xs text-gray-300 truncate flex-1">{f.name}</span>
+                    <div key={i} className="flex items-center gap-2 py-1 px-2 rounded hover:bg-hover group">
+                      <FileText className="h-3.5 w-3.5 text-fg-subtle shrink-0" />
+                      <span className="text-xs text-foreground truncate flex-1">{f.name}</span>
                       <button
                         onClick={(e) => { e.stopPropagation(); setFiles((prev) => prev.filter((_, j) => j !== i)); }}
                         className="opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                       >
-                        <X className="h-3.5 w-3.5 text-gray-500 hover:text-white" />
+                        <X className="h-3.5 w-3.5 text-fg-subtle hover:text-foreground" />
                       </button>
                     </div>
                   ))}

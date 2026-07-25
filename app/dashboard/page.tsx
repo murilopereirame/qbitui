@@ -7,7 +7,7 @@ import { SessionKeepAlive } from "@/components/auth/SessionKeepAlive";
 
 export default function DashboardPage() {
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-950">
+    <div className="flex h-screen overflow-hidden bg-background">
       <SessionKeepAlive />
       <Sidebar />
       <div className="flex flex-col flex-1 overflow-hidden">

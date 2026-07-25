@@ -152,81 +152,81 @@ export function TorrentMenuItems({
 
       {isSingle && isPaused ? (
         <P.Item onSelect={() => runAction("resume", targetHashes)}>
-          <Play className="mr-2 h-4 w-4 text-green-400" /> Resume
+          <Play className="mr-2 h-4 w-4 text-positive" /> Resume
         </P.Item>
       ) : isSingle ? (
         <P.Item onSelect={() => runAction("pause", targetHashes)}>
-          <Pause className="mr-2 h-4 w-4 text-yellow-400" /> Pause
+          <Pause className="mr-2 h-4 w-4 text-warning" /> Pause
         </P.Item>
       ) : (
         <>
           <P.Item onSelect={() => runAction("resume", targetHashes)}>
-            <Play className="mr-2 h-4 w-4 text-green-400" /> Resume
+            <Play className="mr-2 h-4 w-4 text-positive" /> Resume
           </P.Item>
           <P.Item onSelect={() => runAction("pause", targetHashes)}>
-            <Pause className="mr-2 h-4 w-4 text-yellow-400" /> Pause
+            <Pause className="mr-2 h-4 w-4 text-warning" /> Pause
           </P.Item>
         </>
       )}
 
       <P.Sub>
         <P.SubTrigger>
-          <ListOrdered className="mr-2 h-4 w-4 text-gray-400" /> Queue
+          <ListOrdered className="mr-2 h-4 w-4 text-fg-muted" /> Queue
         </P.SubTrigger>
         <P.SubContent>
           <P.Item onSelect={() => runAction("topPrio", targetHashes)}>
-            <ChevronsUp className="mr-2 h-4 w-4 text-gray-400" /> Move to top
+            <ChevronsUp className="mr-2 h-4 w-4 text-fg-muted" /> Move to top
           </P.Item>
           <P.Item onSelect={() => runAction("increasePrio", targetHashes)}>
-            <ArrowUp className="mr-2 h-4 w-4 text-gray-400" /> Move up
+            <ArrowUp className="mr-2 h-4 w-4 text-fg-muted" /> Move up
           </P.Item>
           <P.Item onSelect={() => runAction("decreasePrio", targetHashes)}>
-            <ArrowDown className="mr-2 h-4 w-4 text-gray-400" /> Move down
+            <ArrowDown className="mr-2 h-4 w-4 text-fg-muted" /> Move down
           </P.Item>
           <P.Item onSelect={() => runAction("bottomPrio", targetHashes)}>
-            <ChevronsDown className="mr-2 h-4 w-4 text-gray-400" /> Move to bottom
+            <ChevronsDown className="mr-2 h-4 w-4 text-fg-muted" /> Move to bottom
           </P.Item>
         </P.SubContent>
       </P.Sub>
 
       <P.Item onSelect={() => runAction("recheck", targetHashes)}>
-        <RefreshCw className="mr-2 h-4 w-4 text-blue-400" /> Force recheck
+        <RefreshCw className="mr-2 h-4 w-4 text-accent" /> Force recheck
       </P.Item>
       <P.Item onSelect={() => runAction("reannounce", targetHashes)}>
-        <Radio className="mr-2 h-4 w-4 text-purple-400" /> Reannounce
+        <Radio className="mr-2 h-4 w-4 text-purple-500 dark:text-purple-400" /> Reannounce
       </P.Item>
 
       <P.Separator />
 
       <P.Sub>
         <P.SubTrigger>
-          <Copy className="mr-2 h-4 w-4 text-gray-400" /> Copy
+          <Copy className="mr-2 h-4 w-4 text-fg-muted" /> Copy
         </P.SubTrigger>
         <P.SubContent>
           <P.Item onSelect={() => copyField(targetHashes, "name", "Name")}>
-            <Type className="mr-2 h-4 w-4 text-gray-400" /> Name
+            <Type className="mr-2 h-4 w-4 text-fg-muted" /> Name
           </P.Item>
           <P.Item onSelect={() => copyField(targetHashes, "hash", "Hash")}>
-            <Hash className="mr-2 h-4 w-4 text-gray-400" /> Hash
+            <Hash className="mr-2 h-4 w-4 text-fg-muted" /> Hash
           </P.Item>
           <P.Item onSelect={() => copyField(targetHashes, "magnet", "Magnet link")}>
-            <Magnet className="mr-2 h-4 w-4 text-gray-400" /> Magnet link
+            <Magnet className="mr-2 h-4 w-4 text-fg-muted" /> Magnet link
           </P.Item>
           <P.Item onSelect={() => copyField(targetHashes, "path", "Path")}>
-            <FolderOpen className="mr-2 h-4 w-4 text-gray-400" /> Path
+            <FolderOpen className="mr-2 h-4 w-4 text-fg-muted" /> Path
           </P.Item>
         </P.SubContent>
       </P.Sub>
 
       <P.Item disabled={!isSingle} onSelect={() => exportTorrent(torrent)}>
-        <FileDown className="mr-2 h-4 w-4 text-gray-400" /> Export .torrent
+        <FileDown className="mr-2 h-4 w-4 text-fg-muted" /> Export .torrent
       </P.Item>
 
       <P.Separator />
 
       <P.Item
         onSelect={() => onRequestDelete()}
-        className="text-red-400 focus:text-red-400"
+        className="text-negative focus:text-negative"
       >
         <Trash2 className="mr-2 h-4 w-4" /> Delete
       </P.Item>

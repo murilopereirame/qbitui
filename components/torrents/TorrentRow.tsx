@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Torrent } from "@/lib/types";
 import {
+  CATEGORY_BADGE_COLOR,
   formatBytes,
   formatSpeed,
   formatETA,
@@ -92,7 +93,7 @@ export function TorrentRow({ torrent }: TorrentRowProps) {
         <ContextMenuTrigger asChild>
           <tr
             className={cn(
-              "group border-b border-white/5 hover:bg-white/3 transition-colors cursor-pointer",
+              "group border-b border-line-soft hover:bg-hover-soft transition-colors cursor-pointer",
               (isSelected || isActive) && "bg-blue-600/10"
             )}
             onClick={() => setActiveTorrentHash(torrent.hash)}
@@ -107,13 +108,13 @@ export function TorrentRow({ torrent }: TorrentRowProps) {
             </td>
 
             {/* Priority */}
-            <td className="px-2 py-2 whitespace-nowrap text-sm text-gray-500 text-right tabular-nums">
+            <td className="px-2 py-2 whitespace-nowrap text-sm text-fg-subtle text-right tabular-nums">
               {torrent.priority > 0 ? torrent.priority : "—"}
             </td>
 
             {/* Name */}
             <td className="px-2 py-2 max-w-0">
-              <div className="truncate text-sm text-white font-medium" title={torrent.name}>
+              <div className="truncate text-sm text-foreground font-medium" title={torrent.name}>
                 {torrent.name}
               </div>
               <div className="mt-1">
@@ -129,48 +130,48 @@ export function TorrentRow({ torrent }: TorrentRowProps) {
             </td>
 
             {/* Progress % */}
-            <td className="px-2 py-2 whitespace-nowrap text-sm text-gray-300 text-right tabular-nums">
+            <td className="px-2 py-2 whitespace-nowrap text-sm text-foreground text-right tabular-nums">
               {(torrent.progress * 100).toFixed(1)}%
             </td>
 
             {/* Size */}
-            <td className="px-2 py-2 whitespace-nowrap text-sm text-gray-300 text-right tabular-nums">
+            <td className="px-2 py-2 whitespace-nowrap text-sm text-foreground text-right tabular-nums">
               {formatBytes(torrent.size)}
             </td>
 
             {/* DL Speed */}
-            <td className="px-2 py-2 whitespace-nowrap text-sm text-blue-400 text-right tabular-nums">
+            <td className="px-2 py-2 whitespace-nowrap text-sm text-accent text-right tabular-nums">
               {torrent.dlspeed > 0 ? formatSpeed(torrent.dlspeed) : "—"}
             </td>
 
             {/* UL Speed */}
-            <td className="px-2 py-2 whitespace-nowrap text-sm text-green-400 text-right tabular-nums">
+            <td className="px-2 py-2 whitespace-nowrap text-sm text-positive text-right tabular-nums">
               {torrent.upspeed > 0 ? formatSpeed(torrent.upspeed) : "—"}
             </td>
 
             {/* ETA */}
-            <td className="px-2 py-2 whitespace-nowrap text-sm text-gray-300 text-right tabular-nums">
+            <td className="px-2 py-2 whitespace-nowrap text-sm text-foreground text-right tabular-nums">
               {formatETA(torrent.eta)}
             </td>
 
             {/* Ratio */}
-            <td className="px-2 py-2 whitespace-nowrap text-sm text-gray-300 text-right tabular-nums">
+            <td className="px-2 py-2 whitespace-nowrap text-sm text-foreground text-right tabular-nums">
               {formatRatio(torrent.ratio)}
             </td>
 
             {/* Seeds/Peers */}
-            <td className="px-2 py-2 whitespace-nowrap text-sm text-gray-400 text-right tabular-nums">
+            <td className="px-2 py-2 whitespace-nowrap text-sm text-fg-muted text-right tabular-nums">
               {torrent.num_seeds}/{torrent.num_leechs}
             </td>
 
             {/* Category */}
             <td className="px-2 py-2 whitespace-nowrap text-sm">
               {torrent.category ? (
-                <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30 text-xs border">
+                <Badge className={cn("text-xs border", CATEGORY_BADGE_COLOR)}>
                   {torrent.category}
                 </Badge>
               ) : (
-                <span className="text-gray-600">—</span>
+                <span className="text-fg-subtle">—</span>
               )}
             </td>
 
@@ -179,10 +180,10 @@ export function TorrentRow({ torrent }: TorrentRowProps) {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
-                    className="p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/10 cursor-pointer"
+                    className="p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-hover cursor-pointer"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <MoreHorizontal className="h-4 w-4 text-gray-400" />
+                    <MoreHorizontal className="h-4 w-4 text-fg-muted" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">

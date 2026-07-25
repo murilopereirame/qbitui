@@ -151,7 +151,7 @@ function PrioritySelect({
   return (
     <select
       aria-label="Download priority"
-      className="bg-gray-900 border border-white/10 rounded px-2 py-1 text-xs"
+      className="bg-surface border border-line rounded px-2 py-1 text-xs"
       value={typeof value === "number" ? String(value) : "mixed"}
       onChange={(e) => {
         const v = e.target.value;
@@ -275,7 +275,7 @@ export function TorrentDetailsPanel() {
   if (!activeTorrentHash) {
     return (
       <div
-        className="border-t border-white/10 p-4 text-sm text-gray-500 shrink-0"
+        className="border-t border-line p-4 text-sm text-fg-subtle shrink-0"
         style={{ height: panelHeight }}
       >
         <div
@@ -290,7 +290,7 @@ export function TorrentDetailsPanel() {
   if (isLoading) {
     return (
       <div
-        className="relative border-t border-white/10 p-4 text-sm text-gray-500 shrink-0"
+        className="relative border-t border-line p-4 text-sm text-fg-subtle shrink-0"
         style={{ height: panelHeight }}
       >
         <div
@@ -305,7 +305,7 @@ export function TorrentDetailsPanel() {
   if (isError || !data || !selectedTorrent) {
     return (
       <div
-        className="relative border-t border-white/10 p-4 text-sm text-red-400 shrink-0"
+        className="relative border-t border-line p-4 text-sm text-negative shrink-0"
         style={{ height: panelHeight }}
       >
         <div
@@ -353,7 +353,7 @@ export function TorrentDetailsPanel() {
 
   return (
     <div
-      className="relative border-t border-white/10 px-4 py-3 overflow-hidden shrink-0"
+      className="relative border-t border-line px-4 py-3 overflow-hidden shrink-0"
       style={{ height: panelHeight }}
     >
       {/* Drag handle */}
@@ -362,9 +362,9 @@ export function TorrentDetailsPanel() {
         onMouseDown={onDragStart}
         title="Drag to resize"
       >
-        <div className="absolute inset-x-0 top-0 h-px bg-white/10 group-hover:bg-blue-500/60 transition-colors" />
+        <div className="absolute inset-x-0 top-0 h-px bg-raise-strong group-hover:bg-blue-500/60 transition-colors" />
       </div>
-      <div className="mb-2 text-sm text-white font-medium truncate">{selectedTorrent.name}</div>
+      <div className="mb-2 text-sm text-foreground font-medium truncate">{selectedTorrent.name}</div>
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TorrentDetailsTab)} className="h-full flex flex-col">
         <TabsList className="w-full justify-start overflow-x-auto">
           <TabsTrigger value="transfer">Transfer</TabsTrigger>
@@ -378,9 +378,9 @@ export function TorrentDetailsPanel() {
         <TabsContent value="transfer" className="h-full overflow-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1 text-sm">
             {transferRows.map(([k, v]) => (
-              <div key={k} className="flex justify-between gap-4 border-b border-white/5 py-1">
-                <span className="text-gray-400">{k}</span>
-                <span className="text-gray-200 text-right">{v}</span>
+              <div key={k} className="flex justify-between gap-4 border-b border-line-soft py-1">
+                <span className="text-fg-muted">{k}</span>
+                <span className="text-foreground text-right">{v}</span>
               </div>
             ))}
           </div>
@@ -389,9 +389,9 @@ export function TorrentDetailsPanel() {
         <TabsContent value="info" className="h-full overflow-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1 text-sm">
             {infoRows.map(([k, v]) => (
-              <div key={k} className="flex justify-between gap-4 border-b border-white/5 py-1">
-                <span className="text-gray-400">{k}</span>
-                <span className="text-gray-200 text-right break-all">{v}</span>
+              <div key={k} className="flex justify-between gap-4 border-b border-line-soft py-1">
+                <span className="text-fg-muted">{k}</span>
+                <span className="text-foreground text-right break-all">{v}</span>
               </div>
             ))}
           </div>
@@ -405,7 +405,7 @@ export function TorrentDetailsPanel() {
             <colgroup>
               {trackerWidths.map((w, i) => <col key={i} style={{ width: w }} />)}
             </colgroup>
-            <thead className="text-gray-400 border-b border-white/10">
+            <thead className="text-fg-muted border-b border-line">
               <tr>
                 {(["Tier", "URL", "Status", "Peers", "Seeds", "Leechers", "Downloaded", "Message"] as const).map((label, i) => (
                   <th key={label} className={`py-1 relative select-none ${i >= 2 && i <= 6 ? "text-right" : "text-left"}`}>
@@ -423,7 +423,7 @@ export function TorrentDetailsPanel() {
             </thead>
             <tbody>
               {(data.trackers ?? []).map((t) => (
-                <tr key={t.url} className="border-b border-white/5">
+                <tr key={t.url} className="border-b border-line-soft">
                   <td className="py-1">{t.tier}</td>
                   <td className="py-1 truncate" title={t.url}>{t.url}</td>
                   <td className="py-1 text-right">{t.status}</td>
@@ -446,7 +446,7 @@ export function TorrentDetailsPanel() {
             <colgroup>
               {peerWidths.map((w, i) => <col key={i} style={{ width: w }} />)}
             </colgroup>
-            <thead className="text-gray-400 border-b border-white/10">
+            <thead className="text-fg-muted border-b border-line">
               <tr>
                 {([
                   ["Country", false], ["IP", false], ["Port", true], ["Connection", false],
@@ -468,7 +468,7 @@ export function TorrentDetailsPanel() {
             </thead>
             <tbody>
               {(data.peers ?? []).map((peer) => (
-                <tr key={`${peer.ip}:${peer.port}`} className="border-b border-white/5">
+                <tr key={`${peer.ip}:${peer.port}`} className="border-b border-line-soft">
                   <td className="py-1">{peer.country || "—"}</td>
                   <td className="py-1 truncate">{peer.ip}</td>
                   <td className="py-1 text-right">{peer.port}</td>
@@ -491,7 +491,7 @@ export function TorrentDetailsPanel() {
         <TabsContent value="http" className="h-full overflow-auto">
           <ul className="text-sm space-y-1">
             {(data.webSeeds ?? []).length === 0 ? (
-              <li className="text-gray-500">No HTTP sources</li>
+              <li className="text-fg-subtle">No HTTP sources</li>
             ) : (
               (data.webSeeds ?? []).map((url) => (
                 <li key={url} className="truncate" title={url}>{url}</li>
@@ -503,7 +503,7 @@ export function TorrentDetailsPanel() {
         <TabsContent value="content" className="h-full overflow-auto">
           <div className="flex items-center gap-2 mb-2">
             <select
-              className="bg-gray-900 border border-white/10 rounded px-2 py-1 text-xs disabled:opacity-40 cursor-pointer"
+              className="bg-surface border border-line rounded px-2 py-1 text-xs disabled:opacity-40 cursor-pointer"
               value={bulkPriorityValue}
               disabled={isPending || selectedFileIds().length === 0}
               onChange={(e) => {
@@ -520,7 +520,7 @@ export function TorrentDetailsPanel() {
               <option value="6">High</option>
               <option value="7">Maximal</option>
             </select>
-            <span className="text-xs text-gray-500 ml-auto">{selectedFileIds().length} files selected</span>
+            <span className="text-xs text-fg-subtle ml-auto">{selectedFileIds().length} files selected</span>
           </div>
           <table
             className="text-xs"
@@ -530,7 +530,7 @@ export function TorrentDetailsPanel() {
               <col style={{ width: 32 }} />
               {contentWidths.map((w, i) => <col key={i} style={{ width: w }} />)}
             </colgroup>
-            <thead className="text-gray-400 border-b border-white/10">
+            <thead className="text-fg-muted border-b border-line">
               <tr>
                 <th className="text-left py-1" />
                 {([
@@ -556,7 +556,7 @@ export function TorrentDetailsPanel() {
                 const checked = selectedCount === node.fileIds.length;
                 const indeterminate = selectedCount > 0 && !checked;
                 return (
-                  <tr key={node.key} className="border-b border-white/5">
+                  <tr key={node.key} className="border-b border-line-soft">
                     <td className="py-1">
                       <Checkbox
                         checked={indeterminate ? "indeterminate" : checked}
@@ -564,7 +564,7 @@ export function TorrentDetailsPanel() {
                       />
                     </td>
                     <td className="py-1" style={{ paddingLeft: `${node.depth * 14}px` }}>
-                      <span className={node.isDir ? "font-medium text-gray-200" : "text-gray-300"}>
+                      <span className={node.isDir ? "font-medium text-foreground" : "text-foreground"}>
                         {node.name}
                       </span>
                     </td>

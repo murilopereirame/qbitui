@@ -53,12 +53,12 @@ export function Sidebar() {
   };
 
   return (
-    <div className="flex h-full w-56 flex-col border-r border-white/10 bg-gray-950/50">
+    <div className="flex h-full w-56 flex-col border-r border-line bg-chrome">
       {/* Logo */}
-      <div className="flex items-center gap-2 px-4 py-4 border-b border-white/10">
+      <div className="flex items-center gap-2 px-4 py-4 border-b border-line">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icon.svg" alt="" className="w-8 h-8 rounded-lg shrink-0" />
-        <span className="font-bold text-white text-lg">qbitUI</span>
+        <span className="font-bold text-foreground text-lg">qbitUI</span>
       </div>
 
       {/* Navigation */}
@@ -70,8 +70,8 @@ export function Sidebar() {
             className={cn(
               "w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm transition-colors cursor-pointer",
               filter === f
-                ? "bg-blue-600/20 text-blue-400"
-                : "text-gray-400 hover:text-white hover:bg-white/5"
+                ? "bg-blue-600/20 text-accent"
+                : "text-fg-muted hover:text-foreground hover:bg-hover"
             )}
           >
             <span className="flex items-center gap-2">
@@ -80,7 +80,7 @@ export function Sidebar() {
             </span>
             <span className={cn(
               "text-xs rounded-full px-1.5 py-0.5 min-w-[1.25rem] text-center",
-              filter === f ? "bg-blue-600/30 text-blue-300" : "bg-white/10 text-gray-400"
+              filter === f ? "bg-blue-600/30 text-accent" : "bg-raise-strong text-fg-muted"
             )}>
               {counts[f]}
             </span>
@@ -89,10 +89,10 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="p-3 border-t border-white/10 space-y-2">
+      <div className="p-3 border-t border-line space-y-2">
         <div className={cn(
           "flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs",
-          isError ? "text-red-400" : "text-green-400"
+          isError ? "text-negative" : "text-positive"
         )}>
           <span className="flex items-center gap-2">
             {isError ? <WifiOff className="h-3.5 w-3.5" /> : <Wifi className="h-3.5 w-3.5" />}
@@ -102,7 +102,7 @@ export function Sidebar() {
             <button
               onClick={() => refetch()}
               title="Reconnect"
-              className="p-1 rounded hover:bg-white/10 transition-colors cursor-pointer"
+              className="p-1 rounded hover:bg-hover transition-colors cursor-pointer"
             >
               <RefreshCw className="h-3.5 w-3.5" />
             </button>
@@ -110,21 +110,21 @@ export function Sidebar() {
         </div>
         <button
           onClick={() => setLogsOpen(true)}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-fg-muted hover:text-foreground hover:bg-hover transition-colors cursor-pointer"
         >
           <Terminal className="h-4 w-4" />
           API Logs
         </button>
         <button
           onClick={() => router.push("/settings")}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-fg-muted hover:text-foreground hover:bg-hover transition-colors cursor-pointer"
         >
           <Settings className="h-4 w-4" />
           Settings
         </button>
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-fg-muted hover:text-foreground hover:bg-hover transition-colors cursor-pointer"
         >
           <LogOut className="h-4 w-4" />
           Disconnect

@@ -78,8 +78,8 @@ export function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-950 p-4">
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-transparent to-purple-900/20 pointer-events-none" />
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-purple-500/10 dark:from-blue-900/20 dark:to-purple-900/20 pointer-events-none" />
       <Card className="w-full max-w-md relative">
         <CardHeader className="text-center space-y-2 pb-4">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -110,13 +110,13 @@ export function LoginForm() {
                 onChange={(e) => setApiToken(e.target.value)}
                 required
               />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-fg-subtle">
                 Find your API token in qBittorrent → Settings → Web UI → API Key
               </p>
             </div>
 
             {error && (
-              <div className="flex items-center gap-2 rounded-md bg-red-500/10 border border-red-500/20 p-3 text-red-400 text-sm">
+              <div className="flex items-center gap-2 rounded-md bg-red-500/10 border border-red-500/20 p-3 text-negative text-sm">
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 <span>{error}</span>
               </div>
