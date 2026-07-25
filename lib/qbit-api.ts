@@ -224,18 +224,6 @@ export class QBitAPI {
     return this.fetchJson<TorrentFile[]>(`/api/v2/torrents/files?${params}`);
   }
 
-  async setCategory(hashes: string[], category: string): Promise<void> {
-    await this.formPost("/api/v2/torrents/setCategory", { hashes: hashes.join("|"), category });
-  }
-
-  async addTags(hashes: string[], tags: string): Promise<void> {
-    await this.formPost("/api/v2/torrents/addTags", { hashes: hashes.join("|"), tags });
-  }
-
-  async setLocation(hashes: string[], location: string): Promise<void> {
-    await this.formPost("/api/v2/torrents/setLocation", { hashes: hashes.join("|"), location });
-  }
-
   /**
    * Waits for a freshly added torrent to show up.  `hint` is the info hash we
    * expect; when it is unknown (or wrong, as for v2-only torrents) we fall
@@ -289,17 +277,6 @@ export class QBitAPI {
       body: form,
     });
     if (!res.ok) throw new Error(`Failed to change file priority: ${res.status}`);
-  }
-
-  private async formPost(path: string, fields: Record<string, string>): Promise<void> {
-    const form = new FormData();
-    for (const [key, value] of Object.entries(fields)) form.append(key, value);
-    const res = await this.loggedFetch(this.url(path), {
-      method: "POST",
-      headers: this.headers,
-      body: form,
-    });
-    if (!res.ok) throw new Error(`Request to ${path} failed: ${res.status}`);
   }
 
   private async torrentAction(path: string, hashes: string[]): Promise<void> {

@@ -3,11 +3,15 @@ import { getIronSession } from "iron-session";
 import { cookies } from "next/headers";
 import { sessionOptions, IronSessionData } from "@/lib/session";
 import { QBitAPI } from "@/lib/qbit-api";
-import { parseTorrentMetadata } from "@/lib/torrent-file";
+import { magnetInfoHash, parseTorrentMetadata } from "@/lib/torrent-file";
 import { AddTorrentOptions } from "@/lib/types";
 
 /** Priority 0 means "do not download this file". */
 const PRIORITY_SKIP = 0;
+
+/** How long to wait for a stopped magnet's metadata before starting it. */
+const STOPPED_METADATA_TIMEOUT_MS = 10_000;
+const RUNNING_METADATA_TIMEOUT_MS = 60_000;
 
 async function getSession() {
   const cookieStore = await cookies();
@@ -68,25 +72,29 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const options = readOptions(body);
 
-    // Magnets that were already staged by the prefetch step: they are sitting
-    // in qBittorrent stopped, so all that is left is to apply the choices.
-    if (Array.isArray(body.staged) && body.staged.length > 0) {
-      const warnings: string[] = [];
-      for (const entry of body.staged as Array<{ hash?: string; excludedPaths?: string[] }>) {
-        if (!entry?.hash) continue;
-        const warning = await applyStagedTorrent(api, entry.hash, options, entry.excludedPaths ?? []);
-        if (warning) warnings.push(warning);
-      }
-      return NextResponse.json({ success: true, ...(warnings.length ? { warning: warnings.join("; ") } : {}) });
-    }
-
     const { urls } = body;
     if (!urls || !Array.isArray(urls) || urls.length === 0) {
       return NextResponse.json({ error: "No magnet URLs provided" }, { status: 400 });
     }
 
-    await api.addMagnet(urls, options);
-    return NextResponse.json({ success: true });
+    // Magnets whose files the user picked are added one by one so the
+    // selection can be applied; the rest go in as one batch.
+    const selections = readSelections(body.excludedPaths);
+    const plain = urls.filter((url: string) => !selections[url]?.length);
+    const warnings: string[] = [];
+
+    if (plain.length > 0) await api.addMagnet(plain, options);
+    for (const url of urls) {
+      const excluded = selections[url];
+      if (!excluded?.length) continue;
+      const warning = await addMagnetWithSelection(api, url, options, excluded);
+      if (warning) warnings.push(warning);
+    }
+
+    return NextResponse.json({
+      success: true,
+      ...(warnings.length ? { warning: warnings.join("; ") } : {}),
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to add torrent";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -106,6 +114,18 @@ function readOptions(source: {
     tags: text(source.tags),
     paused: source.paused === true || source.paused === "true",
   };
+}
+
+/** Per-magnet file exclusions, keyed by magnet URL. */
+function readSelections(value: unknown): Record<string, string[]> {
+  if (!value || typeof value !== "object") return {};
+  const result: Record<string, string[]> = {};
+  for (const [url, paths] of Object.entries(value as Record<string, unknown>)) {
+    if (Array.isArray(paths)) {
+      result[url] = paths.filter((entry): entry is string => typeof entry === "string");
+    }
+  }
+  return result;
 }
 
 function readExcludedPaths(value: FormDataEntryValue | null): string[] {
@@ -159,24 +179,45 @@ async function addTorrentFile(
   return skipped ? null : `${fileName}: added, but some deselected files could not be matched`;
 }
 
-/** Applies options and the file selection to an already staged magnet. */
-async function applyStagedTorrent(
+/**
+ * Adds a magnet link and skips the files the user deselected.
+ *
+ * File priorities can only be set once qBittorrent has the torrent's
+ * metadata, which a magnet only gets from peers.  The torrent therefore goes
+ * in stopped and is started if the metadata does not turn up that way —
+ * qBittorrent fetches metadata before any file data, so the deselected files
+ * are marked before they would be written.
+ */
+async function addMagnetWithSelection(
   api: QBitAPI,
-  hash: string,
+  url: string,
   options: AddTorrentOptions,
   excludedPaths: string[]
 ): Promise<string | null> {
-  let warning: string | null = null;
+  const known = new Set((await api.getTorrents()).map((torrent) => torrent.hash));
+  await api.addMagnet([url], { ...options, paused: true });
 
-  if (excludedPaths.length > 0) {
-    const skipped = await skipFiles(api, hash, excludedPaths);
-    if (!skipped) warning = "Some deselected files could not be matched";
+  const hash = await api.waitForTorrentHash(known, magnetInfoHash(url));
+  if (!hash) {
+    return "Magnet added, but the file selection could not be applied (torrent not found)";
   }
 
-  if (options.savepath) await api.setLocation([hash], options.savepath);
-  if (options.category) await api.setCategory([hash], options.category);
-  if (options.tags) await api.addTags([hash], options.tags);
-  if (!options.paused) await api.resumeTorrents([hash]);
+  let files = await api.waitForTorrentFiles(hash, STOPPED_METADATA_TIMEOUT_MS);
+  if (files.length === 0) {
+    // Some setups only fetch metadata once the torrent is running.
+    await api.resumeTorrents([hash]);
+    files = await api.waitForTorrentFiles(hash, RUNNING_METADATA_TIMEOUT_MS);
+  }
+
+  let warning: string | null = null;
+  if (files.length === 0) {
+    warning = "Magnet added, but its metadata never arrived — no files were skipped";
+  } else if (!(await skipFiles(api, hash, excludedPaths))) {
+    warning = "Magnet added, but some deselected files could not be matched";
+  }
+
+  if (options.paused) await api.pauseTorrents([hash]);
+  else await api.resumeTorrents([hash]);
 
   return warning;
 }

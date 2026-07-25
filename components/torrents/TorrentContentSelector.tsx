@@ -65,7 +65,7 @@ export function TorrentContentSelector({ torrent, selected, onChange, onRemove }
           <div className="text-[11px] text-fg-subtle">
             {selected.size} of {torrent.files.length} files · {formatBytes(selectedSize)} of{" "}
             {formatBytes(torrent.totalSize)}
-            {torrent.source === "magnet" && " · metadata fetched"}
+            {torrent.source === "magnet" && " · from metadata API"}
           </div>
         </div>
         {onRemove && (

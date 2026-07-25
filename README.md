@@ -12,7 +12,7 @@ A modern, production-ready web interface for qBittorrent built with Next.js, Tai
 - 🧩 **Torrent detail tabs** — transfer stats, information, trackers, peers, HTTP sources, and content priorities
 - 🔗 **Magnet links** — paste one or multiple magnet links at once
 - 📁 **Torrent file upload** — drag-and-drop `.torrent` file upload with multi-file support
-- 🗂️ **Content preview before adding** — `.torrent` files are parsed locally and magnet metadata is prefetched, so you can pick which files to download before the torrent starts (also available in the mobile app)
+- 🗂️ **Content preview before adding** — `.torrent` files are parsed locally, and magnet links are looked up through a metadata API you configure in Settings, so you can pick which files to download before the torrent starts (also available in the mobile app)
 - 📊 **Live updates** — 2-second polling for real-time progress, speeds, and state
 - 🔍 **Filter & search** — filter by state (all/downloading/seeding/paused/completed/error)
 - 📦 **Bulk actions** — select multiple torrents and apply actions in bulk
@@ -72,6 +72,37 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ### 4. Login
 
 Enter your qBittorrent WebUI host URL, username, and password.
+
+### 5. Optional: torrent metadata API
+
+A magnet link carries no file list, so qbitUI cannot show one until qBittorrent has
+fetched the metadata from peers. To pick files *before* the torrent is queued, point
+qbitUI at a service that resolves a magnet link — **Settings → Torrent Metadata** in the
+web/desktop app, or **Settings → Torrent Metadata** in the mobile app.
+
+The magnet is appended as a `magnet` query parameter:
+
+```
+GET https://example.com/metadata?magnet=magnet%3A%3Fxt%3Durn%3Abtih%3A…
+```
+
+and the response is expected to look like:
+
+```json
+{
+  "name": "Example Release 1080p",
+  "info_hash": "dd26da124cea669adba0ea31376731709f1ed6b0",
+  "total_size": 2036952033,
+  "files": [
+    { "path": "Example Release 1080p/Example Release 1080p.mp4", "size": 2036844440 },
+    { "path": "Example Release 1080p/cover.jpg", "size": 82514 }
+  ]
+}
+```
+
+Only `name` and `files[].path` / `files[].size` are used; any other fields are ignored.
+Without it, magnet links are still added normally — you just cannot preselect files.
+`.torrent` uploads never need this: they are parsed locally.
 
 ## Electron Desktop App
 
@@ -206,8 +237,7 @@ in an encrypted httpOnly cookie that is inaccessible to JavaScript.
 | `/api/auth/me` | GET | Check authentication status |
 | `/api/torrents` | GET | List torrents (with filter support) |
 | `/api/torrents` | POST | Add magnet link or torrent file (optionally skipping deselected files) |
-| `/api/torrents/prefetch` | POST | Read a torrent's file list before adding it (parses `.torrent` uploads, stages magnets) |
-| `/api/torrents/prefetch` | DELETE | Discard magnets that were staged for metadata but never added |
+| `/api/torrents/prefetch` | POST | Read a torrent's file list before adding it (parses `.torrent` uploads, queries the metadata API for magnets) |
 | `/api/torrents/action` | POST | Perform action (pause/resume/delete/recheck/reannounce/top/up/down/bottom) |
 | `/api/torrents/details` | GET | Get detailed torrent data (properties/trackers/peers/web seeds/files) |
 | `/api/torrents/file-priority` | POST | Change torrent file priority in batch |
@@ -258,6 +288,8 @@ in an encrypted httpOnly cookie that is inaccessible to JavaScript.
 │   └── useTransfer.ts
 ├── lib/
 │   ├── qbit-api.ts             # Server-side qBittorrent API client
+│   ├── metadata-api.ts         # Client for the configurable magnet metadata service
+│   ├── settings.ts             # Client-side preferences (metadata API URL)
 │   ├── bencode.ts              # Bencode decoder (info-hash preserving)
 │   ├── torrent-file.ts         # .torrent metadata parsing
 │   ├── file-tree.ts            # Groups a file list into a folder tree

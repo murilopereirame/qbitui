@@ -116,8 +116,8 @@ export interface TorrentMetadata {
 
 /**
  * A torrent whose contents are known but which has not been queued yet.
- * Magnet links have no local metadata, so they are "staged": added to
- * qBittorrent in a stopped state purely to fetch their file list.
+ * `.torrent` files are parsed locally; magnet links carry no file list, so
+ * theirs comes from the configured metadata API.
  */
 export interface PrefetchedTorrent {
   /** Stable client-side id — the file name or the magnet URI. */
@@ -127,8 +127,6 @@ export interface PrefetchedTorrent {
   totalSize: number;
   files: TorrentMetadataFile[];
   infoHash?: string | null;
-  /** Set for magnets: the hash of the stopped torrent holding the metadata. */
-  stagedHash?: string;
 }
 
 export interface ApiError {

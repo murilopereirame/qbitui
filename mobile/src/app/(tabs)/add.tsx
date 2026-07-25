@@ -20,7 +20,7 @@ import type { ThemeColors } from '@/constants/theme';
 import { useAddTorrent } from '@/hooks/use-qbit';
 import { useTheme } from '@/hooks/use-theme';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
-import { useTorrentPrefetch, type StagedTorrent } from '@/hooks/use-torrent-prefetch';
+import { useTorrentPrefetch, type TorrentContents } from '@/hooks/use-torrent-prefetch';
 
 type AddMode = 'magnet' | 'file';
 
@@ -33,21 +33,22 @@ export default function AddTorrentScreen() {
   const [savepath, setSavepath] = useState('');
   const [category, setCategory] = useState('');
   const [paused, setPaused] = useState(false);
-  const [staged, setStaged] = useState<StagedTorrent | null>(null);
+  const [contents, setContents] = useState<TorrentContents | null>(null);
   const [selectedIndexes, setSelectedIndexes] = useState<Set<number>>(new Set());
   const { mutate: addTorrent, isPending } = useAddTorrent();
-  const { stage, confirm, discard } = useTorrentPrefetch();
+  const { readContents, confirmStaged, confirmMagnet, discard, metadataApiUrl } =
+    useTorrentPrefetch();
 
-  // A staged torrent sits stopped inside qBittorrent; make sure it never
+  // A staged .torrent sits stopped inside qBittorrent; make sure it never
   // outlives the screen without the user having confirmed it.
-  const stagedRef = useRef<StagedTorrent | null>(null);
+  const stagedRef = useRef<string | null>(null);
   useEffect(() => {
-    stagedRef.current = staged;
-  }, [staged]);
+    stagedRef.current = contents?.stagedHash ?? null;
+  }, [contents]);
   useEffect(() => {
     return () => {
       const pending = stagedRef.current;
-      if (pending) void discard(pending.hash);
+      if (pending) void discard(pending);
     };
     // discard is recreated every render; the cleanup only needs to run on unmount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -66,14 +67,14 @@ export default function AddTorrentScreen() {
     setSavepath('');
     setCategory('');
     setPaused(false);
-    setStaged(null);
+    setContents(null);
     setSelectedIndexes(new Set());
   }
 
-  function dropStaged() {
-    if (!staged) return;
-    void discard(staged.hash);
-    setStaged(null);
+  function dropContents() {
+    if (!contents) return;
+    if (contents.stagedHash) void discard(contents.stagedHash);
+    setContents(null);
     setSelectedIndexes(new Set());
   }
 
@@ -90,16 +91,16 @@ export default function AddTorrentScreen() {
         Alert.alert('Invalid file', 'Please select a .torrent file');
         return;
       }
-      dropStaged();
+      dropContents();
       setSelectedFile({ uri: asset.uri, name: asset.name });
     } catch {
       Alert.alert('Error', 'Failed to pick file');
     }
   }
 
-  /** Adds the torrent stopped and reads its file list, without downloading. */
+  /** Reads the torrent's file list before anything is queued. */
   function handleFetchContents() {
-    if (staged) return;
+    if (contents) return;
     const magnets = parseMagnets(magnetText);
 
     if (mode === 'magnet' && magnets.length === 0) {
@@ -118,13 +119,13 @@ export default function AddTorrentScreen() {
       return;
     }
 
-    stage.mutate(
+    readContents.mutate(
       mode === 'magnet'
         ? { type: 'magnet', url: magnets[0] }
         : { type: 'file', fileUri: selectedFile!.uri, fileName: selectedFile!.name },
       {
         onSuccess: (result) => {
-          setStaged(result);
+          setContents(result);
           setSelectedIndexes(new Set(result.files.map((file) => file.index)));
         },
         onError: (e) => Alert.alert('Error', e.message),
@@ -135,32 +136,43 @@ export default function AddTorrentScreen() {
   function handleAdd() {
     const options = { savepath: savepath || undefined, category: category || undefined, paused };
 
-    // Contents were fetched: apply the selection to the staged torrent.
-    if (staged) {
+    // Contents were listed: apply the file selection.
+    if (contents) {
       if (selectedIndexes.size === 0) {
         Alert.alert('Nothing selected', 'Select at least one file to download.');
         return;
       }
-      const excludedIndexes = staged.files
-        .map((file) => file.index)
-        .filter((index) => !selectedIndexes.has(index));
+      const skipped = contents.files.filter((file) => !selectedIndexes.has(file.index));
+      const done = (warning?: string | null) => {
+        Alert.alert(
+          'Success',
+          skipped.length > 0
+            ? `Added ${contents.name} — skipping ${skipped.length} file${skipped.length > 1 ? 's' : ''}`
+            : `Added ${contents.name}`
+        );
+        if (warning) Alert.alert('Heads up', warning);
+        resetForm();
+      };
 
-      confirm.mutate(
-        { hash: staged.hash, excludedIndexes, options },
-        {
-          onSuccess: () => {
-            const skipped = excludedIndexes.length;
-            Alert.alert(
-              'Success',
-              skipped > 0
-                ? `Added ${staged.name} — skipping ${skipped} file${skipped > 1 ? 's' : ''}`
-                : `Added ${staged.name}`
-            );
-            resetForm();
+      if (contents.stagedHash) {
+        confirmStaged.mutate(
+          {
+            hash: contents.stagedHash,
+            excludedIndexes: skipped.map((file) => file.index),
+            options,
           },
-          onError: (e) => Alert.alert('Error', e.message),
-        }
-      );
+          { onSuccess: () => done(), onError: (e) => Alert.alert('Error', e.message) }
+        );
+      } else {
+        confirmMagnet.mutate(
+          {
+            url: parseMagnets(magnetText)[0],
+            excludedPaths: skipped.map((file) => file.name),
+            options,
+          },
+          { onSuccess: (warning) => done(warning), onError: (e) => Alert.alert('Error', e.message) }
+        );
+      }
       return;
     }
 
@@ -204,11 +216,15 @@ export default function AddTorrentScreen() {
 
   const magnetCount = parseMagnets(magnetText).length;
   const hasInput = mode === 'magnet' ? magnetCount > 0 : selectedFile !== null;
-  const busy = isPending || stage.isPending || confirm.isPending;
-  const canAdd = (hasInput || staged !== null) && !busy;
+  const busy =
+    isPending || readContents.isPending || confirmStaged.isPending || confirmMagnet.isPending;
+  const canAdd = hasInput && !busy;
+  // Magnet contents come from the metadata API, so that button only shows when
+  // one is configured; .torrent files are read through qBittorrent itself.
+  const canChooseFiles = mode === 'file' || Boolean(metadataApiUrl);
 
   function addButtonLabel() {
-    if (staged) return `Add ${selectedIndexes.size} of ${staged.files.length} files`;
+    if (contents) return `Add ${selectedIndexes.size} of ${contents.files.length} files`;
     if (mode === 'magnet') return magnetCount > 1 ? `Add ${magnetCount} Magnets` : 'Add Magnet';
     return 'Add Torrent';
   }
@@ -258,7 +274,7 @@ export default function AddTorrentScreen() {
                 placeholderTextColor={colors.placeholder}
                 value={magnetText}
                 onChangeText={(text) => {
-                  dropStaged();
+                  dropContents();
                   setMagnetText(text);
                 }}
                 multiline
@@ -281,18 +297,18 @@ export default function AddTorrentScreen() {
           )}
 
           {/* Contents */}
-          {staged ? (
+          {contents ? (
             <>
               <View style={styles.contentsHeader}>
                 <Text style={styles.label}>Contents</Text>
-                <Pressable onPress={dropStaged} hitSlop={8}>
+                <Pressable onPress={dropContents} hitSlop={8}>
                   <Text style={styles.clearLink}>Clear</Text>
                 </Pressable>
               </View>
               <TorrentContentPicker
-                name={staged.name}
-                files={staged.files}
-                totalSize={staged.totalSize}
+                name={contents.name}
+                files={contents.files}
+                totalSize={contents.totalSize}
                 selected={selectedIndexes}
                 onChange={setSelectedIndexes}
               />
@@ -300,28 +316,24 @@ export default function AddTorrentScreen() {
                 Deselected files are skipped — qBittorrent will not download them.
               </Text>
             </>
-          ) : (
-            <>
-              <Pressable
-                style={[styles.secondaryBtn, (!hasInput || busy) && styles.buttonDisabled]}
-                onPress={handleFetchContents}
-                disabled={!hasInput || busy}>
-                {stage.isPending ? (
-                  <ActivityIndicator color={colors.accentText} size="small" />
-                ) : (
-                  <MaterialIcons name="account-tree" size={16} color={colors.accentText} />
-                )}
-                <Text style={styles.secondaryBtnText}>
-                  {stage.isPending ? 'Fetching metadata…' : 'Choose files first'}
-                </Text>
-              </Pressable>
-              {stage.isPending && (
-                <Text style={styles.hint}>
-                  The torrent is held in a stopped state while its metadata downloads. This can take
-                  a moment for magnets with few peers.
-                </Text>
+          ) : canChooseFiles ? (
+            <Pressable
+              style={[styles.secondaryBtn, (!hasInput || busy) && styles.buttonDisabled]}
+              onPress={handleFetchContents}
+              disabled={!hasInput || busy}>
+              {readContents.isPending ? (
+                <ActivityIndicator color={colors.accentText} size="small" />
+              ) : (
+                <MaterialIcons name="account-tree" size={16} color={colors.accentText} />
               )}
-            </>
+              <Text style={styles.secondaryBtnText}>
+                {readContents.isPending ? 'Looking up files…' : 'Choose files first'}
+              </Text>
+            </Pressable>
+          ) : (
+            <Text style={styles.hint}>
+              Set a metadata API in Settings to list a magnet link&apos;s files before adding it.
+            </Text>
           )}
 
           <Text style={styles.label}>Save Path (optional)</Text>
@@ -357,7 +369,7 @@ export default function AddTorrentScreen() {
             style={[styles.button, !canAdd && styles.buttonDisabled]}
             onPress={handleAdd}
             disabled={!canAdd}>
-            {busy && !stage.isPending ? (
+            {busy && !readContents.isPending ? (
               <ActivityIndicator color="#ffffff" />
             ) : (
               <Text style={styles.buttonText}>{addButtonLabel()}</Text>

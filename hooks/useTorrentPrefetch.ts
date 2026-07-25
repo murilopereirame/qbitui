@@ -17,8 +17,8 @@ async function post(body: BodyInit, headers?: HeadersInit): Promise<PrefetchResu
 
 /**
  * Reads the contents of torrents before they are queued.  `.torrent` files are
- * parsed server-side; magnets are staged in qBittorrent (added stopped) until
- * the user either confirms them or discards them.
+ * parsed server-side; magnet links have no local file list, so they are looked
+ * up through the metadata API configured in Settings.
  */
 export function useTorrentPrefetch() {
   const prefetchFiles = useMutation({
@@ -30,22 +30,9 @@ export function useTorrentPrefetch() {
   });
 
   const prefetchMagnets = useMutation({
-    mutationFn: async (magnets: string[]) =>
-      post(JSON.stringify({ magnets }), { "Content-Type": "application/json" }),
+    mutationFn: async ({ magnets, metadataApi }: { magnets: string[]; metadataApi: string }) =>
+      post(JSON.stringify({ magnets, metadataApi }), { "Content-Type": "application/json" }),
   });
 
-  /** Removes magnets that were staged but never added. Best effort. */
-  function discardStaged(hashes: string[]) {
-    if (hashes.length === 0) return;
-    const body = JSON.stringify({ hashes });
-    // keepalive lets the request survive the dialog (or tab) going away.
-    void fetch("/api/torrents/prefetch", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body,
-      keepalive: true,
-    }).catch(() => {});
-  }
-
-  return { prefetchFiles, prefetchMagnets, discardStaged };
+  return { prefetchFiles, prefetchMagnets };
 }

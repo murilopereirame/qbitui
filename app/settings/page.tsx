@@ -6,7 +6,12 @@ import { TopBar } from "@/components/layout/TopBar";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ThemeModeSelector } from "@/components/theme/ThemeToggle";
-import { Magnet, FileText, Info, Palette } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { useMetadataApi } from "@/hooks/useMetadataApi";
+import { validateMetadataApiUrl } from "@/lib/metadata-api";
+import { toast } from "sonner";
+import { Magnet, FileText, Info, Palette, ListTree } from "lucide-react";
 
 interface HandlerState {
   status: boolean | null; // null = loading
@@ -90,6 +95,13 @@ export default function SettingsPage() {
             </div>
           )}
 
+          <section className="mb-8">
+            <h2 className="text-sm font-semibold text-fg-muted uppercase tracking-wider mb-4">
+              Torrent Metadata
+            </h2>
+            <MetadataApiSetting />
+          </section>
+
           <section>
             <h2 className="text-sm font-semibold text-fg-muted uppercase tracking-wider mb-4">
               Default Handler Registration
@@ -169,6 +181,69 @@ export default function SettingsPage() {
             </div>
           </section>
         </main>
+      </div>
+    </div>
+  );
+}
+
+/** Endpoint used to list a magnet link's files before it is added. */
+function MetadataApiSetting() {
+  const { url, setUrl } = useMetadataApi();
+  // Keyed on the stored value so the draft resets whenever it changes.
+  return <MetadataApiForm key={url} url={url} onSave={setUrl} />;
+}
+
+function MetadataApiForm({ url, onSave }: { url: string; onSave: (url: string) => void }) {
+  const [value, setValue] = useState(url);
+  const saved = value.trim() === url;
+
+  function save() {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      onSave("");
+      toast.success("Metadata API cleared");
+      return;
+    }
+    try {
+      onSave(validateMetadataApiUrl(trimmed));
+      toast.success("Metadata API saved");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Invalid URL");
+    }
+  }
+
+  return (
+    <div className="flex items-start gap-4 p-4 bg-surface border border-line rounded-xl">
+      <div className="mt-0.5 shrink-0">
+        <ListTree className="h-5 w-5 text-accent" />
+      </div>
+      <div className="flex-1 min-w-0 space-y-3">
+        <div>
+          <div className="font-medium text-foreground text-sm mb-1">Metadata API</div>
+          <div className="text-xs text-fg-muted leading-relaxed">
+            A magnet link carries no file list. Point qbitUI at a service that returns one and you
+            can choose which files to download before the torrent is added. The magnet is appended
+            as a <code>magnet</code> query parameter, and the response is expected to look like{" "}
+            <code>{'{ "name": "…", "files": [{ "path": "…", "size": 123 }] }'}</code>.
+          </div>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Input
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder="https://example.com/torrent-metadata"
+            spellCheck={false}
+            aria-label="Torrent metadata API URL"
+          />
+          <Button onClick={save} disabled={saved} className="shrink-0">
+            Save
+          </Button>
+        </div>
+        {url && (
+          <p className="text-xs text-fg-subtle break-all">
+            Requests go to <code>{url}{url.includes("?") ? "&" : "?"}magnet=…</code>
+          </p>
+        )}
       </div>
     </div>
   );

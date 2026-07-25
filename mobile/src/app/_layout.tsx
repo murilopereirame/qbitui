@@ -8,6 +8,7 @@ import React, { useEffect } from 'react';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { logger } from '@/lib/logger';
 import { useAuthStore } from '@/store';
+import { useSettingsStore } from '@/store/settings';
 import { useThemeStore } from '@/store/theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -60,11 +61,13 @@ function AuthGuard() {
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const loadThemeMode = useThemeStore((s) => s.loadMode);
+  const loadSettings = useSettingsStore((s) => s.loadSettings);
 
-  // Restore the saved light/dark/system preference on launch.
+  // Restore saved preferences on launch.
   useEffect(() => {
     loadThemeMode();
-  }, [loadThemeMode]);
+    loadSettings();
+  }, [loadThemeMode, loadSettings]);
 
   return (
     <QueryClientProvider client={queryClient}>

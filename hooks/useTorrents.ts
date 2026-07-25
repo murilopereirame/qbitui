@@ -126,17 +126,24 @@ export function useAddTorrent() {
   const queryClient = useQueryClient();
 
   const addMagnet = useMutation({
-    mutationFn: async ({ urls, options }: { urls: string[]; options: AddTorrentOptions }) => {
+    mutationFn: async ({
+      urls,
+      options,
+      excludedPaths,
+    }: {
+      urls: string[];
+      options: AddTorrentOptions;
+      /** Files the user deselected, keyed by magnet URL. */
+      excludedPaths?: Record<string, string[]>;
+    }) => {
       const res = await fetch("/api/torrents", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ urls, ...options }),
+        body: JSON.stringify({ urls, ...options, excludedPaths }),
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? "Failed to add magnet");
-      }
-      return res.json();
+      const data = (await res.json().catch(() => ({}))) as AddTorrentResponse & { error?: string };
+      if (!res.ok) throw new Error(data.error ?? "Failed to add magnet");
+      return data.warning ? [data.warning] : [];
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["torrents"] });
@@ -190,28 +197,5 @@ export function useAddTorrent() {
     },
   });
 
-  /** Confirms magnets that were staged by the metadata prefetch step. */
-  const addStaged = useMutation({
-    mutationFn: async ({
-      staged,
-      options,
-    }: {
-      staged: { hash: string; excludedPaths: string[] }[];
-      options: AddTorrentOptions;
-    }) => {
-      const res = await fetch("/api/torrents", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ staged, ...options }),
-      });
-      const data = (await res.json().catch(() => ({}))) as AddTorrentResponse & { error?: string };
-      if (!res.ok) throw new Error(data.error ?? "Failed to add torrents");
-      return data.warning ? [data.warning] : [];
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["torrents"] });
-    },
-  });
-
-  return { addMagnet, addFile, addStaged };
+  return { addMagnet, addFile };
 }

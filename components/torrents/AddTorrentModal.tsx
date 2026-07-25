@@ -11,9 +11,11 @@ import { Switch } from "@/components/ui/switch";
 import { useUIStore } from "@/store";
 import { useAddTorrent } from "@/hooks/useTorrents";
 import { useTorrentPrefetch } from "@/hooks/useTorrentPrefetch";
+import { useMetadataApi } from "@/hooks/useMetadataApi";
 import { TorrentContentSelector } from "./TorrentContentSelector";
 import { PrefetchedTorrent } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import NextLink from "next/link";
 import { Upload, Link, X, AlertCircle, Loader2, FileText, ListTree } from "lucide-react";
 import { toast } from "sonner";
 
@@ -40,8 +42,9 @@ export function AddTorrentModal() {
     pendingMagnet, setPendingMagnet,
     pendingTorrentFile, setPendingTorrentFile,
   } = useUIStore();
-  const { addMagnet, addFile, addStaged } = useAddTorrent();
-  const { prefetchFiles, prefetchMagnets, discardStaged } = useTorrentPrefetch();
+  const { addMagnet, addFile } = useAddTorrent();
+  const { prefetchFiles, prefetchMagnets } = useTorrentPrefetch();
+  const { url: metadataApi } = useMetadataApi();
 
   const [activeTab, setActiveTab] = useState<"magnet" | "file">("magnet");
   const [magnetText, setMagnetText] = useState("");
@@ -59,7 +62,7 @@ export function AddTorrentModal() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const contents = activeTab === "magnet" ? magnetContents : fileContents;
-  const isBusy = addMagnet.isPending || addFile.isPending || addStaged.isPending;
+  const isBusy = addMagnet.isPending || addFile.isPending;
 
   const readContents = useCallback(
     async (chosen: File[]) => {
@@ -142,16 +145,7 @@ export function AddTorrentModal() {
     setSelection({});
   }
 
-  /**
-   * Magnets are staged inside qBittorrent while their contents are shown, so
-   * anything left over when the dialog goes away has to be taken back out.
-   */
-  function discardStagedMagnets() {
-    discardStaged(magnetContents.flatMap((entry) => (entry.stagedHash ? [entry.stagedHash] : [])));
-  }
-
   function handleClose() {
-    discardStagedMagnets();
     setAddModalOpen(false);
     reset();
   }
@@ -181,7 +175,7 @@ export function AddTorrentModal() {
     }
     setMagnetError("");
     try {
-      const result = await prefetchMagnets.mutateAsync(urls);
+      const result = await prefetchMagnets.mutateAsync({ magnets: urls, metadataApi });
       for (const failure of result.failed) toast.error(failure.error);
       if (result.torrents.length > 0) {
         setMagnetContents((prev) => [...prev, ...result.torrents]);
@@ -193,39 +187,32 @@ export function AddTorrentModal() {
   }
 
   async function handleAddMagnet() {
-    // Anything already staged is confirmed with its file selection; the rest of
-    // the textarea is added the plain way.
-    const staged = magnetContents.flatMap((entry) =>
-      entry.stagedHash
-        ? [{ hash: entry.stagedHash, excludedPaths: excludedPathsFor(entry, selection) }]
-        : []
-    );
-    const plain = parseMagnets(magnetText).filter(
-      (url) => !magnetContents.some((entry) => entry.id === url)
-    );
-
-    if (staged.length === 0 && plain.length === 0) {
+    const urls = parseMagnets(magnetText);
+    if (urls.length === 0) {
       setMagnetError("No valid magnet links found. Each line should start with magnet:");
       return;
     }
     setMagnetError("");
 
-    try {
-      if (staged.length > 0) {
-        reportWarnings(await addStaged.mutateAsync({ staged, options: options() }));
-      }
-      if (plain.length > 0) {
-        await addMagnet.mutateAsync({ urls: plain, options: options() });
-      }
-      const total = staged.length + plain.length;
-      toast.success(`Added ${total} torrent${total > 1 ? "s" : ""}`);
-      // Staged torrents are now real downloads — don't delete them on close.
-      setMagnetContents([]);
-      setAddModalOpen(false);
-      reset();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to add magnet");
+    // Magnets whose contents were listed carry the user's file selection.
+    const excludedPaths: Record<string, string[]> = {};
+    for (const torrent of magnetContents) {
+      const excluded = excludedPathsFor(torrent, selection);
+      if (excluded.length > 0) excludedPaths[torrent.id] = excluded;
     }
+
+    addMagnet.mutate(
+      { urls, options: options(), excludedPaths },
+      {
+        onSuccess: (warnings) => {
+          reportWarnings(warnings ?? []);
+          toast.success(`Added ${urls.length} magnet link${urls.length > 1 ? "s" : ""}`);
+          setAddModalOpen(false);
+          reset();
+        },
+        onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to add magnet"),
+      }
+    );
   }
 
   async function handleAddFiles() {
@@ -242,7 +229,6 @@ export function AddTorrentModal() {
         onSuccess: (warnings) => {
           reportWarnings(warnings ?? []);
           toast.success(`Added ${files.length} torrent file${files.length > 1 ? "s" : ""}`);
-          discardStagedMagnets();
           setAddModalOpen(false);
           reset();
         },
@@ -257,7 +243,6 @@ export function AddTorrentModal() {
   }
 
   function removeMagnet(entry: PrefetchedTorrent) {
-    if (entry.stagedHash) discardStaged([entry.stagedHash]);
     setMagnetContents((prev) => prev.filter((item) => item.id !== entry.id));
     setMagnetText((prev) =>
       prev
@@ -326,9 +311,7 @@ export function AddTorrentModal() {
     </div>
   );
 
-  const magnetCount = parseMagnets(magnetText).filter(
-    (url) => !magnetContents.some((entry) => entry.id === url)
-  ).length + magnetContents.length;
+  const magnetCount = parseMagnets(magnetText).length;
 
   return (
     <Dialog open={isAddModalOpen} onOpenChange={handleClose}>
@@ -370,23 +353,27 @@ export function AddTorrentModal() {
               )}
             </div>
 
-            <Button
-              variant="outline"
-              className="w-full gap-2"
-              onClick={handleFetchMagnetContents}
-              disabled={prefetchMagnets.isPending || isBusy || !magnetText.trim()}
-            >
-              {prefetchMagnets.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <ListTree className="h-4 w-4" />
-              )}
-              {prefetchMagnets.isPending ? "Fetching metadata from peers…" : "Fetch files to choose"}
-            </Button>
-            {prefetchMagnets.isPending && (
+            {metadataApi ? (
+              <Button
+                variant="outline"
+                className="w-full gap-2"
+                onClick={handleFetchMagnetContents}
+                disabled={prefetchMagnets.isPending || isBusy || !magnetText.trim()}
+              >
+                {prefetchMagnets.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ListTree className="h-4 w-4" />
+                )}
+                {prefetchMagnets.isPending ? "Looking up files…" : "Fetch files to choose"}
+              </Button>
+            ) : (
               <p className="text-xs text-fg-subtle">
-                The torrent is held in a stopped state while its metadata downloads. This can take a
-                moment for magnets with few peers.
+                Set a torrent metadata API in{" "}
+                <NextLink href="/settings" className="text-accent hover:underline">
+                  Settings
+                </NextLink>{" "}
+                to list a magnet link&apos;s files before adding it.
               </p>
             )}
 
