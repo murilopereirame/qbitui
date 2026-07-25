@@ -9,7 +9,6 @@ import {
   Pause,
   CheckCircle,
   AlertTriangle,
-  LayoutDashboard,
   LogOut,
   Wifi,
   WifiOff,
@@ -57,9 +56,8 @@ export function Sidebar() {
     <div className="flex h-full w-56 flex-col border-r border-white/10 bg-gray-950/50">
       {/* Logo */}
       <div className="flex items-center gap-2 px-4 py-4 border-b border-white/10">
-        <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shrink-0">
-          <LayoutDashboard className="h-4 w-4 text-white" />
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/icon.svg" alt="" className="w-8 h-8 rounded-lg shrink-0" />
         <span className="font-bold text-white text-lg">qbitUI</span>
       </div>
 

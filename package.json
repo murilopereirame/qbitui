@@ -29,14 +29,17 @@
     },
     "files": [
       "electron/dist/**",
+      "electron/icon.png",
       ".next/standalone/**",
       "!.next/standalone/.git"
     ],
+    "icon": "electron/icon.png",
     "asarUnpack": [
       ".next/**",
       "node_modules/keytar/**"
     ],
     "mac": {
+      "icon": "electron/icon.png",
       "category": "public.app-category.utilities",
       "hardenedRuntime": false,
       "gatekeeperAssess": false,
@@ -77,6 +80,7 @@
       ]
     },
     "win": {
+      "icon": "electron/icon.png",
       "target": [
         {
           "target": "nsis"
@@ -84,6 +88,7 @@
       ]
     },
     "linux": {
+      "icon": "electron/icon.png",
       "category": "Network",
       "maintainer": "qbitUI <qbitui@users.noreply.github.com>",
       "target": [

@@ -82,11 +82,8 @@ export function LoginForm() {
       <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-transparent to-purple-900/20 pointer-events-none" />
       <Card className="w-full max-w-md relative">
         <CardHeader className="text-center space-y-2 pb-4">
-          <div className="mx-auto w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center mb-2">
-            <svg viewBox="0 0 24 24" className="w-7 h-7 fill-white">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" />
-            </svg>
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icon.svg" alt="" className="mx-auto w-14 h-14 rounded-xl mb-2" />
           <CardTitle className="text-2xl font-bold">qbitUI</CardTitle>
           <CardDescription>Connect to your qBittorrent instance</CardDescription>
         </CardHeader>
