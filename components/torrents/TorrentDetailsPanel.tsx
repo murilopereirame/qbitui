@@ -5,17 +5,25 @@ import { useColumnResize } from "@/hooks/useColumnResize";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTorrents } from "@/hooks/useTorrents";
+import { SPEED_HISTORY_SIZE, SPEED_SAMPLE_MS, useSpeedHistory } from "@/hooks/useSpeedHistory";
+import { SpeedChart } from "./SpeedChart";
 import { useTorrentDetails, useSetTorrentFilePriority } from "@/hooks/useTorrentDetails";
 import { useUIStore } from "@/store";
 import { calculateUploadedDownloadedRatio, formatBytes, formatDate, formatETA, formatRatio, formatSpeed } from "@/lib/utils";
 import { TorrentDetailsSection, TorrentFile } from "@/lib/types";
 import { toast } from "sonner";
 
-type TorrentDetailsTab = "transfer" | "info" | "trackers" | "peers" | "http" | "content";
+const SPEED_SAMPLE_SECONDS = SPEED_SAMPLE_MS / 1000;
+
+/** Tall enough for the tab bar plus a few rows without needing a resize. */
+const DEFAULT_PANEL_HEIGHT = 360;
+
+type TorrentDetailsTab = "transfer" | "speed" | "info" | "trackers" | "peers" | "http" | "content";
 
 function getSectionsForTab(tab: TorrentDetailsTab): TorrentDetailsSection[] {
   switch (tab) {
     case "transfer":
+    case "speed":
     case "info":
       return ["properties"];
     case "trackers":
@@ -197,8 +205,8 @@ export function TorrentDetailsPanel() {
   const { widths: contentWidths, startResize: startContentResize } = useColumnResize([300, 80, 70, 140, 80, 80]);
 
   // Resizable panel state
-  const [panelHeight, setPanelHeight] = useState(320);
-  const dragRef = useRef({ active: false, startY: 0, startHeight: 320 });
+  const [panelHeight, setPanelHeight] = useState(DEFAULT_PANEL_HEIGHT);
+  const dragRef = useRef({ active: false, startY: 0, startHeight: DEFAULT_PANEL_HEIGHT });
 
   // onDragStart creates new move/end closures each time a drag begins so there
   // are no circular useCallback dependencies and no ref mutations during render.
@@ -240,6 +248,12 @@ export function TorrentDetailsPanel() {
     [activeTab, data?.files]
   );
   const flatNodes = useMemo(() => flatten(tree), [tree]);
+  // The torrent list polls every 2s, which is what the graphs sample from.
+  const speedHistory = useSpeedHistory(
+    activeTorrentHash,
+    selectedTorrent?.dlspeed ?? 0,
+    selectedTorrent?.upspeed ?? 0
+  );
 
   function toggleNode(node: TreeNode) {
     const next = new Set(selectedNodes);
@@ -353,7 +367,7 @@ export function TorrentDetailsPanel() {
 
   return (
     <div
-      className="relative border-t border-line px-4 py-3 overflow-hidden shrink-0"
+      className="relative flex flex-col border-t border-line px-4 py-3 overflow-hidden shrink-0"
       style={{ height: panelHeight }}
     >
       {/* Drag handle */}
@@ -364,10 +378,15 @@ export function TorrentDetailsPanel() {
       >
         <div className="absolute inset-x-0 top-0 h-px bg-raise-strong group-hover:bg-blue-500/60 transition-colors" />
       </div>
-      <div className="mb-2 text-sm text-foreground font-medium truncate">{selectedTorrent.name}</div>
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TorrentDetailsTab)} className="h-full flex flex-col">
-        <TabsList className="w-full justify-start overflow-x-auto">
+      <div className="mb-2 shrink-0 text-sm text-foreground font-medium truncate">{selectedTorrent.name}</div>
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as TorrentDetailsTab)}
+        className="flex flex-1 min-h-0 flex-col"
+      >
+        <TabsList className="w-full justify-start overflow-x-auto shrink-0">
           <TabsTrigger value="transfer">Transfer</TabsTrigger>
+          <TabsTrigger value="speed">Speed</TabsTrigger>
           <TabsTrigger value="info">Information</TabsTrigger>
           <TabsTrigger value="trackers">Trackers</TabsTrigger>
           <TabsTrigger value="peers">Peers</TabsTrigger>
@@ -375,7 +394,7 @@ export function TorrentDetailsPanel() {
           <TabsTrigger value="content">Content</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="transfer" className="h-full overflow-auto">
+        <TabsContent value="transfer" className="flex-1 min-h-0 overflow-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1 text-sm">
             {transferRows.map(([k, v]) => (
               <div key={k} className="flex justify-between gap-4 border-b border-line-soft py-1">
@@ -386,7 +405,30 @@ export function TorrentDetailsPanel() {
           </div>
         </TabsContent>
 
-        <TabsContent value="info" className="h-full overflow-auto">
+        <TabsContent value="speed" className="flex-1 min-h-0 overflow-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            <SpeedChart
+              label="Download"
+              values={speedHistory.map((sample) => sample.dl)}
+              capacity={SPEED_HISTORY_SIZE}
+              current={selectedTorrent.dlspeed}
+              colorClass="text-accent"
+            />
+            <SpeedChart
+              label="Upload"
+              values={speedHistory.map((sample) => sample.up)}
+              capacity={SPEED_HISTORY_SIZE}
+              current={selectedTorrent.upspeed}
+              colorClass="text-positive"
+            />
+          </div>
+          <p className="mt-2 text-xs text-fg-subtle">
+            Sampled every {SPEED_SAMPLE_SECONDS}s while this torrent is selected · each graph is
+            scaled to its own peak
+          </p>
+        </TabsContent>
+
+        <TabsContent value="info" className="flex-1 min-h-0 overflow-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1 text-sm">
             {infoRows.map(([k, v]) => (
               <div key={k} className="flex justify-between gap-4 border-b border-line-soft py-1">
@@ -397,7 +439,7 @@ export function TorrentDetailsPanel() {
           </div>
         </TabsContent>
 
-        <TabsContent value="trackers" className="h-full overflow-auto">
+        <TabsContent value="trackers" className="flex-1 min-h-0 overflow-auto">
           <table
             className="text-xs"
             style={{ tableLayout: "fixed", width: "100%", minWidth: trackerWidths.reduce((a, b) => a + b, 0) }}
@@ -438,7 +480,7 @@ export function TorrentDetailsPanel() {
           </table>
         </TabsContent>
 
-        <TabsContent value="peers" className="h-full overflow-auto">
+        <TabsContent value="peers" className="flex-1 min-h-0 overflow-auto">
           <table
             className="text-xs"
             style={{ tableLayout: "fixed", width: "100%", minWidth: peerWidths.reduce((a, b) => a + b, 0) }}
@@ -488,7 +530,7 @@ export function TorrentDetailsPanel() {
           </table>
         </TabsContent>
 
-        <TabsContent value="http" className="h-full overflow-auto">
+        <TabsContent value="http" className="flex-1 min-h-0 overflow-auto">
           <ul className="text-sm space-y-1">
             {(data.webSeeds ?? []).length === 0 ? (
               <li className="text-fg-subtle">No HTTP sources</li>
@@ -500,7 +542,7 @@ export function TorrentDetailsPanel() {
           </ul>
         </TabsContent>
 
-        <TabsContent value="content" className="h-full overflow-auto">
+        <TabsContent value="content" className="flex-1 min-h-0 overflow-auto">
           <div className="flex items-center gap-2 mb-2">
             <select
               className="bg-surface border border-line rounded px-2 py-1 text-xs disabled:opacity-40 cursor-pointer"

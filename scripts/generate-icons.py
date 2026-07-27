@@ -22,13 +22,11 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # --- Palette ---------------------------------------------------------------
 GRADIENT_TOP = (0x5D, 0x9C, 0xF3)
 GRADIENT_BOTTOM = (0x2C, 0x6C, 0xCB)
-RIM = (0xE6, 0xF0, 0xFE)
 GLYPH = (0xFA, 0xFC, 0xFF)
 WAVE = (0xA9, 0xCB, 0xF6)
 
 # --- Geometry (fractions of the icon edge) ---------------------------------
 CORNER_RADIUS = 0.205
-RIM_WIDTH = 0.011
 
 RING_CENTER = (0.500, 0.505)
 RING_RADIUS = 0.283          # centre-line radius of the stroke
@@ -46,6 +44,11 @@ WAVES = (  # (centre-line radius, half angular span in degrees)
     (0.428, 31.0),
 )
 WAVE_STROKE = 0.034
+
+# Favicon-sized renders enlarge the mark and drop detail: the waves go first,
+# then the ring at the very smallest sizes.
+COMPACT_ZOOM = 1.28
+TINY_ZOOM = 1.75
 
 
 @dataclass(frozen=True)
@@ -94,20 +97,27 @@ def _arc_with_caps(
         _round_cap(draw, cx + radius * math.cos(rad), cy + radius * math.sin(rad), width / 2, fill)
 
 
-def _draw_glyph_bowl(draw: ImageDraw.ImageDraw, c: Canvas, bowl_x: float) -> None:
+def _draw_glyph_bowl(draw: ImageDraw.ImageDraw, c: Canvas, bowl_x: float, zoom: float = 1.0) -> None:
     cx, cy = c.px(bowl_x), c.px(BOWL_Y)
-    stroke = c.px(GLYPH_STROKE)
-    r = c.px(BOWL_RADIUS) + stroke / 2
+    stroke = c.px(GLYPH_STROKE * zoom)
+    r = c.px(BOWL_RADIUS * zoom) + stroke / 2
     draw.ellipse((cx - r, cy - r, cx + r, cy + r), outline=GLYPH, width=round(stroke))
 
 
-def _draw_stem(draw: ImageDraw.ImageDraw, c: Canvas, x: float, top: float, bottom: float) -> None:
-    half = c.px(GLYPH_STROKE) / 2
+def _draw_stem(
+    draw: ImageDraw.ImageDraw, c: Canvas, x: float, top: float, bottom: float, zoom: float = 1.0
+) -> None:
+    half = c.px(GLYPH_STROKE * zoom) / 2
     draw.rectangle((c.px(x) - half, c.px(top), c.px(x) + half, c.px(bottom)), fill=GLYPH)
 
 
-def render(size: int) -> Image.Image:
-    """Render the icon at ``size`` px, supersampled for smooth edges."""
+def render(size: int, zoom: float = 1.0, waves: bool = True, ring: bool = True) -> Image.Image:
+    """Render the icon at ``size`` px, supersampled for smooth edges.
+
+    ``zoom`` scales the mark inside the tile, and ``waves``/``ring`` can drop
+    those elements; at favicon sizes the full artwork turns to mush, so the
+    small entries use a larger, simpler mark.
+    """
     scale = 4 if size <= 512 else 2
     c = Canvas(size * scale)
     s = c.size
@@ -121,17 +131,8 @@ def render(size: int) -> Image.Image:
     icon.paste(_vertical_gradient(s).convert("RGBA"), (0, 0), mask)
     draw = ImageDraw.Draw(icon)
 
-    # Light rim hugging the rounded square.
-    rim = c.px(RIM_WIDTH)
-    draw.rounded_rectangle(
-        (rim / 2, rim / 2, s - 1 - rim / 2, s - 1 - rim / 2),
-        radius=c.px(CORNER_RADIUS) - rim / 2,
-        outline=RIM,
-        width=round(rim),
-    )
-
     # Sound waves flanking the ring.
-    for radius, span in WAVES:
+    for radius, span in WAVES if waves else ():
         for center_angle in (0.0, 180.0):
             _arc_with_caps(
                 draw,
@@ -144,18 +145,23 @@ def render(size: int) -> Image.Image:
             )
 
     # Ring.
-    ring_stroke = c.px(RING_STROKE)
-    rcx, rcy = c.px(RING_CENTER[0]), c.px(RING_CENTER[1])
-    rr = c.px(RING_RADIUS) + ring_stroke / 2
-    draw.ellipse(
-        (rcx - rr, rcy - rr, rcx + rr, rcy + rr), outline=GLYPH, width=round(ring_stroke)
-    )
+    if ring:
+        ring_stroke = c.px(RING_STROKE * zoom)
+        rcx, rcy = c.px(RING_CENTER[0]), c.px(RING_CENTER[1])
+        rr = c.px(RING_RADIUS * zoom) + ring_stroke / 2
+        draw.ellipse(
+            (rcx - rr, rcy - rr, rcx + rr, rcy + rr), outline=GLYPH, width=round(ring_stroke)
+        )
 
     # "qb": two bowls, a descender on the q and an ascender on the b.
-    _draw_glyph_bowl(draw, c, Q_BOWL_X)
-    _draw_glyph_bowl(draw, c, B_BOWL_X)
-    _draw_stem(draw, c, Q_BOWL_X + BOWL_RADIUS, BOWL_Y - BOWL_RADIUS, BOWL_Y + BOWL_RADIUS + STEM_EXTENT)
-    _draw_stem(draw, c, B_BOWL_X - BOWL_RADIUS, BOWL_Y - BOWL_RADIUS - STEM_EXTENT, BOWL_Y + BOWL_RADIUS)
+    bowl = BOWL_RADIUS * zoom
+    stem = STEM_EXTENT * zoom
+    q_x = 0.5 - (0.5 - Q_BOWL_X) * zoom
+    b_x = 0.5 + (B_BOWL_X - 0.5) * zoom
+    _draw_glyph_bowl(draw, c, q_x, zoom)
+    _draw_glyph_bowl(draw, c, b_x, zoom)
+    _draw_stem(draw, c, q_x + bowl, BOWL_Y - bowl, BOWL_Y + bowl + stem, zoom)
+    _draw_stem(draw, c, b_x - bowl, BOWL_Y - bowl - stem, BOWL_Y + bowl, zoom)
 
     return icon.resize((size, size), Image.LANCZOS)
 
@@ -227,9 +233,6 @@ def svg() -> str:
     </linearGradient>
   </defs>
   <rect x="0" y="0" width="1024" height="1024" rx="{pct(CORNER_RADIUS)}" fill="url(#bg)"/>
-  <rect x="{pct(RIM_WIDTH / 2)}" y="{pct(RIM_WIDTH / 2)}" width="{pct(1 - RIM_WIDTH)}" height="{pct(1 - RIM_WIDTH)}"
-    rx="{pct(CORNER_RADIUS - RIM_WIDTH / 2)}" fill="none"
-    stroke="#{RIM[0]:02X}{RIM[1]:02X}{RIM[2]:02X}" stroke-width="{pct(RIM_WIDTH)}"/>
   <g>
     {waves}
   </g>
@@ -242,6 +245,38 @@ def svg() -> str:
     width="{stem_w}" height="{pct(2 * BOWL_RADIUS + STEM_EXTENT)}" fill="{glyph}"/>
 </svg>
 """
+
+
+def write_ico(path: str, images: list[Image.Image]) -> None:
+    """Write a PNG-in-ICO, one entry per image (Pillow can only rescale one)."""
+    import struct
+    from io import BytesIO
+
+    encoded = []
+    for image in images:
+        buffer = BytesIO()
+        image.save(buffer, format="PNG")
+        encoded.append(buffer.getvalue())
+
+    offset = 6 + 16 * len(encoded)
+    header = struct.pack("<HHH", 0, 1, len(encoded))
+    directory = b""
+    for image, data in zip(images, encoded):
+        directory += struct.pack(
+            "<BBBBHHII",
+            image.width if image.width < 256 else 0,
+            image.height if image.height < 256 else 0,
+            0,
+            0,
+            1,
+            32,
+            len(data),
+            offset,
+        )
+        offset += len(data)
+
+    with open(path, "wb") as handle:
+        handle.write(header + directory + b"".join(encoded))
 
 
 def write(path: str, image: Image.Image) -> None:
@@ -264,8 +299,15 @@ def main() -> None:
     # Next.js app icons (app/icon.png is picked up automatically as the favicon).
     write("app/icon.png", master.resize((512, 512), Image.LANCZOS))
     write("app/apple-icon.png", master.resize((180, 180), Image.LANCZOS))
+    # Favicons: the small entries drop the waves and enlarge the mark so it
+    # still reads at 16-32 px.
     favicon = os.path.join(ROOT, "app/favicon.ico")
-    master.save(favicon, sizes=[(16, 16), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
+    write_ico(
+        favicon,
+        [render(16, zoom=TINY_ZOOM, waves=False, ring=False)]
+        + [render(size, zoom=COMPACT_ZOOM, waves=False) for size in (24, 32)]
+        + [master.resize((size, size), Image.LANCZOS) for size in (48, 64, 128, 256)],
+    )
     print("  app/favicon.ico")
 
     # electron-builder (referenced from package.json "build" config).
