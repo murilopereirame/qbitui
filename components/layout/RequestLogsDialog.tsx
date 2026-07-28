@@ -13,10 +13,10 @@ interface Props {
 }
 
 function statusColor(status: number | null): string {
-  if (status === null) return "text-red-400";
-  if (status < 300) return "text-green-400";
-  if (status < 400) return "text-yellow-400";
-  return "text-red-400";
+  if (status === null) return "text-negative";
+  if (status < 300) return "text-positive";
+  if (status < 400) return "text-warning";
+  return "text-negative";
 }
 
 function LogRow({ entry }: { entry: RequestLogEntry }) {
@@ -25,28 +25,28 @@ function LogRow({ entry }: { entry: RequestLogEntry }) {
   return (
     <>
       <tr
-        className={cn("border-b border-white/5", hasBody ? "cursor-pointer hover:bg-white/5" : "hover:bg-white/3")}
+        className={cn("border-b border-line-soft", hasBody ? "cursor-pointer hover:bg-hover" : "hover:bg-hover-soft")}
         onClick={() => hasBody && setExpanded((v) => !v)}>
-        <td className="px-2 py-1 text-gray-500 whitespace-nowrap">
+        <td className="px-2 py-1 text-fg-subtle whitespace-nowrap">
           {new Date(entry.timestamp).toLocaleTimeString()}
         </td>
-        <td className="px-2 py-1 text-blue-300">{entry.method}</td>
-        <td className="px-2 py-1 text-gray-300 truncate max-w-xs" title={entry.path}>
+        <td className="px-2 py-1 text-accent">{entry.method}</td>
+        <td className="px-2 py-1 text-foreground truncate max-w-xs" title={entry.path}>
           <span className="flex items-center gap-1">
-            {hasBody && (expanded ? <ChevronDown className="h-3 w-3 shrink-0 text-gray-500" /> : <ChevronRight className="h-3 w-3 shrink-0 text-gray-500" />)}
+            {hasBody && (expanded ? <ChevronDown className="h-3 w-3 shrink-0 text-fg-subtle" /> : <ChevronRight className="h-3 w-3 shrink-0 text-fg-subtle" />)}
             {entry.path}
-            {entry.error && <span className="text-red-400 ml-2">({entry.error})</span>}
+            {entry.error && <span className="text-negative ml-2">({entry.error})</span>}
           </span>
         </td>
         <td className={cn("px-2 py-1 text-right", statusColor(entry.status))}>
           {entry.status ?? "ERR"}
         </td>
-        <td className="px-2 py-1 text-right text-gray-400">{entry.duration}ms</td>
+        <td className="px-2 py-1 text-right text-fg-muted">{entry.duration}ms</td>
       </tr>
       {expanded && entry.body && (
-        <tr className="border-b border-white/5 bg-black/30">
+        <tr className="border-b border-line-soft bg-raise">
           <td colSpan={5} className="px-4 py-2">
-            <pre className="text-xs text-gray-400 whitespace-pre-wrap break-all font-mono">{entry.body}</pre>
+            <pre className="text-xs text-fg-muted whitespace-pre-wrap break-all font-mono">{entry.body}</pre>
           </td>
         </tr>
       )}
@@ -82,17 +82,17 @@ export function RequestLogsDialog({ open, onClose }: Props) {
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle>API Request Logs</DialogTitle>
-            <Button size="sm" variant="ghost" onClick={clearLogs} className="gap-1.5 text-gray-400 hover:text-red-400">
+            <Button size="sm" variant="ghost" onClick={clearLogs} className="gap-1.5 text-fg-muted hover:text-negative">
               <Trash2 className="h-3.5 w-3.5" /> Clear
             </Button>
           </div>
         </DialogHeader>
         <div className="flex-1 overflow-auto min-h-0">
           {logs.length === 0 ? (
-            <p className="text-sm text-gray-500 p-4">No requests logged yet.</p>
+            <p className="text-sm text-fg-subtle p-4">No requests logged yet.</p>
           ) : (
             <table className="w-full text-xs font-mono">
-              <thead className="sticky top-0 bg-gray-950 text-gray-400 border-b border-white/10">
+              <thead className="sticky top-0 bg-background text-fg-muted border-b border-line">
                 <tr>
                   <th className="text-left px-2 py-1.5 w-44">Time</th>
                   <th className="text-left px-2 py-1.5 w-12">Method</th>

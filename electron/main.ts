@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, ipcMain, Menu } from "electron";
+import { app, BrowserWindow, shell, ipcMain, Menu, nativeImage, nativeTheme } from "electron";
 import keytar from "keytar";
 import { utilityProcess, UtilityProcess } from "electron";
 import path from "path";
@@ -201,6 +201,20 @@ async function startEmbeddedServer(): Promise<void> {
 // Window helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * The app icon, used for the taskbar/dock on Linux and Windows.  macOS takes
+ * its icon from the bundle, so an empty image there is harmless.
+ */
+function appIcon(): Electron.NativeImage | undefined {
+  const image = nativeImage.createFromPath(path.join(__dirname, "..", "icon.png"));
+  return image.isEmpty() ? undefined : image;
+}
+
+/** Window chrome colour matching the web UI's current theme. */
+function windowBackground(): string {
+  return nativeTheme.shouldUseDarkColors ? "#030712" : "#ffffff";
+}
+
 function createLogsWindow(): void {
   if (logsWindow) {
     logsWindow.focus();
@@ -211,7 +225,8 @@ function createLogsWindow(): void {
     width: 960,
     height: 640,
     title: "Server Logs — qbitUI",
-    backgroundColor: "#030712",
+    icon: appIcon(),
+    backgroundColor: windowBackground(),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       nodeIntegration: false,
@@ -304,8 +319,9 @@ function createWindow(): void {
     minWidth: 900,
     minHeight: 600,
     title: "qbitUI",
+    icon: appIcon(),
     autoHideMenuBar: true,
-    backgroundColor: "#030712",
+    backgroundColor: windowBackground(),
     show: false,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -484,6 +500,19 @@ app.on("open-file", (event, filePath) => {
 
 app.whenReady().then(async () => {
   logElectron(`App ready — pid=${process.pid} mode=${isDev ? "dev" : "production"} platform=${process.platform}`);
+
+  // In development macOS shows the generic Electron dock icon; set ours.
+  if (isDev && process.platform === "darwin") {
+    const icon = appIcon();
+    if (icon) app.dock?.setIcon(icon);
+  }
+
+  // Keep the window chrome in step when the OS switches between light/dark.
+  nativeTheme.on("updated", () => {
+    for (const window of [mainWindow, logsWindow]) {
+      window?.setBackgroundColor(windowBackground());
+    }
+  });
 
   ipcMain.handle("credentials:get", () => readCredentials());
   ipcMain.handle("credentials:set", (_event, credentials: SavedCredentials) => {

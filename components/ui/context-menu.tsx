@@ -9,10 +9,10 @@ export const ContextMenuGroup = ContextMenuPrimitive.Group;
 export const ContextMenuSub = ContextMenuPrimitive.Sub;
 
 const contentClasses =
-  "z-50 min-w-[10rem] overflow-hidden rounded-md border border-white/10 bg-gray-900 p-1 text-white shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95";
+  "z-50 min-w-[10rem] overflow-hidden rounded-md border border-line bg-surface p-1 text-foreground shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95";
 
 const itemClasses =
-  "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-white/10 focus:text-white data-[disabled]:pointer-events-none data-[disabled]:opacity-50";
+  "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-hover focus:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50";
 
 export const ContextMenuContent = React.forwardRef<
   React.ElementRef<typeof ContextMenuPrimitive.Content>,
@@ -46,11 +46,11 @@ export const ContextMenuSubTrigger = React.forwardRef<
 >(({ className, inset, children, ...props }, ref) => (
   <ContextMenuPrimitive.SubTrigger
     ref={ref}
-    className={cn(itemClasses, "data-[state=open]:bg-white/10", inset && "pl-8", className)}
+    className={cn(itemClasses, "data-[state=open]:bg-hover", inset && "pl-8", className)}
     {...props}
   >
     {children}
-    <ChevronRight className="ml-auto h-4 w-4 text-gray-400" />
+    <ChevronRight className="ml-auto h-4 w-4 text-fg-muted" />
   </ContextMenuPrimitive.SubTrigger>
 ));
 ContextMenuSubTrigger.displayName = ContextMenuPrimitive.SubTrigger.displayName;
@@ -75,7 +75,7 @@ export const ContextMenuSeparator = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ContextMenuPrimitive.Separator
     ref={ref}
-    className={cn("-mx-1 my-1 h-px bg-white/10", className)}
+    className={cn("-mx-1 my-1 h-px bg-raise-strong", className)}
     {...props}
   />
 ));
@@ -87,7 +87,7 @@ export const ContextMenuLabel = React.forwardRef<
 >(({ className, inset, ...props }, ref) => (
   <ContextMenuPrimitive.Label
     ref={ref}
-    className={cn("px-2 py-1.5 text-xs font-semibold text-gray-400", inset && "pl-8", className)}
+    className={cn("px-2 py-1.5 text-xs font-semibold text-fg-muted", inset && "pl-8", className)}
     {...props}
   />
 ));

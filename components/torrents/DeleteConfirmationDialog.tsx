@@ -75,7 +75,7 @@ export function DeleteConfirmationDialog({
             checked={deleteFiles}
             onCheckedChange={(v) => setDeleteFiles(Boolean(v))}
           />
-          <Label htmlFor="delete-files" className="cursor-pointer text-sm text-gray-300">
+          <Label htmlFor="delete-files" className="cursor-pointer text-sm text-foreground">
             Also delete downloaded files
           </Label>
         </div>

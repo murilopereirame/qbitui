@@ -9,13 +9,14 @@ A modern, production-ready web interface for qBittorrent built with Next.js, Tai
 - 🔑 **Desktop credential persistence** — encrypted credential storage in Electron for automatic re-login
 - 📋 **Torrent management** — add, pause, resume, delete, recheck, reannounce
 - ↕️ **Queue ordering controls** — move torrents top/up/down/bottom
-- 🧩 **Torrent detail tabs** — transfer stats, information, trackers, peers, HTTP sources, and content priorities
+- 🧩 **Torrent detail tabs** — transfer stats, speed graphs, information, trackers, peers, HTTP sources, and content priorities (the mobile app graphs speeds too)
 - 🔗 **Magnet links** — paste one or multiple magnet links at once
 - 📁 **Torrent file upload** — drag-and-drop `.torrent` file upload with multi-file support
+- 🗂️ **Content preview before adding** — `.torrent` files are parsed locally, and magnet links are looked up through a metadata API you configure in Settings, so you can pick which files to download before the torrent starts (also available in the mobile app)
 - 📊 **Live updates** — 2-second polling for real-time progress, speeds, and state
 - 🔍 **Filter & search** — filter by state (all/downloading/seeding/paused/completed/error)
 - 📦 **Bulk actions** — select multiple torrents and apply actions in bulk
-- 🌙 **Dark mode** — dark UI by default
+- 🌗 **Light & dark themes** — switch from the top bar or Settings, or follow the operating system (web, desktop and the Expo mobile app)
 - 📱 **Responsive** — works on desktop and mobile
 - 🛡️ **Proxy layer** — all qBittorrent API calls go through Next.js API routes (no CORS issues, credentials never reach the browser)
 
@@ -71,6 +72,37 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ### 4. Login
 
 Enter your qBittorrent WebUI host URL, username, and password.
+
+### 5. Optional: torrent metadata API
+
+A magnet link carries no file list, so qbitUI cannot show one until qBittorrent has
+fetched the metadata from peers. To pick files *before* the torrent is queued, point
+qbitUI at a service that resolves a magnet link — **Settings → Torrent Metadata** in the
+web/desktop app, or **Settings → Torrent Metadata** in the mobile app.
+
+The magnet is appended as a `magnet` query parameter:
+
+```
+GET https://example.com/metadata?magnet=magnet%3A%3Fxt%3Durn%3Abtih%3A…
+```
+
+and the response is expected to look like:
+
+```json
+{
+  "name": "Example Release 1080p",
+  "info_hash": "dd26da124cea669adba0ea31376731709f1ed6b0",
+  "total_size": 2036952033,
+  "files": [
+    { "path": "Example Release 1080p/Example Release 1080p.mp4", "size": 2036844440 },
+    { "path": "Example Release 1080p/cover.jpg", "size": 82514 }
+  ]
+}
+```
+
+Only `name` and `files[].path` / `files[].size` are used; any other fields are ignored.
+Without it, magnet links are still added normally — you just cannot preselect files.
+`.torrent` uploads never need this: they are parsed locally.
 
 ## Electron Desktop App
 
@@ -204,7 +236,8 @@ in an encrypted httpOnly cookie that is inaccessible to JavaScript.
 | `/api/auth/logout` | POST | Destroy session |
 | `/api/auth/me` | GET | Check authentication status |
 | `/api/torrents` | GET | List torrents (with filter support) |
-| `/api/torrents` | POST | Add magnet link or torrent file |
+| `/api/torrents` | POST | Add magnet link or torrent file (optionally skipping deselected files) |
+| `/api/torrents/prefetch` | POST | Read a torrent's file list before adding it (parses `.torrent` uploads, queries the metadata API for magnets) |
 | `/api/torrents/action` | POST | Perform action (pause/resume/delete/recheck/reannounce/top/up/down/bottom) |
 | `/api/torrents/details` | GET | Get detailed torrent data (properties/trackers/peers/web seeds/files) |
 | `/api/torrents/file-priority` | POST | Change torrent file priority in batch |
@@ -218,6 +251,7 @@ in an encrypted httpOnly cookie that is inaccessible to JavaScript.
 │   ├── preload.ts              # Electron preload script
 │   └── tsconfig.json           # TypeScript config for Electron main process
 ├── scripts/
+│   ├── generate-icons.py       # Renders the app icon (SVG master + PNG/ICO for every platform)
 │   └── prepare-standalone.mjs # Copies static/public into the Next.js standalone dir
 ├── .github/
 │   └── workflows/
@@ -225,7 +259,7 @@ in an encrypted httpOnly cookie that is inaccessible to JavaScript.
 ├── app/
 │   ├── layout.tsx              # Root layout with providers
 │   ├── page.tsx                # Login page
-│   ├── providers.tsx           # React Query provider
+│   ├── providers.tsx           # React Query provider + themed toaster
 │   ├── dashboard/
 │   │   └── page.tsx            # Main dashboard
 │   └── api/                    # API proxy routes
@@ -240,15 +274,26 @@ in an encrypted httpOnly cookie that is inaccessible to JavaScript.
 │   ├── layout/
 │   │   ├── Sidebar.tsx
 │   │   └── TopBar.tsx
+│   ├── theme/
+│   │   └── ThemeToggle.tsx     # Light/dark/system switcher
 │   └── torrents/
 │       ├── TorrentTable.tsx
 │       ├── TorrentRow.tsx
-│       └── AddTorrentModal.tsx
+│       ├── AddTorrentModal.tsx
+│       └── TorrentContentSelector.tsx  # File picker shown before a torrent is queued
 ├── hooks/
 │   ├── useTorrents.ts
+│   ├── useTorrentPrefetch.ts   # Reads torrent contents before adding
+│   ├── useTheme.ts
 │   └── useTransfer.ts
 ├── lib/
 │   ├── qbit-api.ts             # Server-side qBittorrent API client
+│   ├── metadata-api.ts         # Client for the configurable magnet metadata service
+│   ├── settings.ts             # Client-side preferences (metadata API URL)
+│   ├── bencode.ts              # Bencode decoder (info-hash preserving)
+│   ├── torrent-file.ts         # .torrent metadata parsing
+│   ├── file-tree.ts            # Groups a file list into a folder tree
+│   ├── theme.ts                # Theme preference store
 │   ├── session.ts              # iron-session configuration
 │   ├── types.ts                # TypeScript types
 │   └── utils.ts                # Format helpers

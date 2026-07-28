@@ -1,21 +1,94 @@
 @import "tailwindcss";
 
+/*
+ * Themes are class-based: `.dark` on <html> selects the dark palette, its
+ * absence the light one.  ThemeProvider (plus the no-flash script in the root
+ * layout) is what toggles that class.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
+  color-scheme: light;
+
+  /* Surfaces */
+  --background: #f4f6f9;
+  --chrome: #eef1f6;
+  --surface: #ffffff;
+  --raise: rgb(15 23 42 / 0.04);
+  --raise-strong: rgb(15 23 42 / 0.08);
+  --hover: rgb(15 23 42 / 0.06);
+  --hover-soft: rgb(15 23 42 / 0.035);
+  --overlay: rgb(15 23 42 / 0.35);
+
+  /* Text */
+  --foreground: #0f172a;
+  --fg-muted: #4b5563;
+  --fg-subtle: #6b7280;
+
+  /* Lines */
+  --line: rgb(15 23 42 / 0.12);
+  --line-soft: rgb(15 23 42 / 0.07);
+  --line-strong: rgb(15 23 42 / 0.3);
+
+  /* Accents — tuned per theme so they stay readable on their own canvas */
+  --accent: #2563eb;
+  --positive: #15803d;
+  --negative: #dc2626;
+  --warning: #b45309;
+}
+
+.dark {
+  color-scheme: dark;
+
   --background: #030712;
+  --chrome: #080d1a;
+  --surface: #111827;
+  --raise: rgb(255 255 255 / 0.05);
+  --raise-strong: rgb(255 255 255 / 0.1);
+  --hover: rgb(255 255 255 / 0.08);
+  --hover-soft: rgb(255 255 255 / 0.04);
+  --overlay: rgb(0 0 0 / 0.7);
+
   --foreground: #f9fafb;
+  --fg-muted: #9ca3af;
+  --fg-subtle: #6b7280;
+
+  --line: rgb(255 255 255 / 0.1);
+  --line-soft: rgb(255 255 255 / 0.06);
+  --line-strong: rgb(255 255 255 / 0.3);
+
+  --accent: #60a5fa;
+  --positive: #4ade80;
+  --negative: #f87171;
+  --warning: #fbbf24;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-chrome: var(--chrome);
+  --color-surface: var(--surface);
+  --color-raise: var(--raise);
+  --color-raise-strong: var(--raise-strong);
+  --color-hover: var(--hover);
+  --color-hover-soft: var(--hover-soft);
+  --color-overlay: var(--overlay);
+
   --color-foreground: var(--foreground);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
+
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-line-strong: var(--line-strong);
+
+  --color-accent: var(--accent);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
+  --color-warning: var(--warning);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-}
-
-html {
-  color-scheme: dark;
 }

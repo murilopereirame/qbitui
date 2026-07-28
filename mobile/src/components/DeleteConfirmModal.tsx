@@ -2,6 +2,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import type { ThemeColors } from '@/constants/theme';
+import { useThemedStyles } from '@/hooks/use-themed-styles';
+
 const PREF_KEY = 'qbitui_delete_files';
 
 interface Props {
@@ -13,6 +16,7 @@ interface Props {
 }
 
 export function DeleteConfirmModal({ visible, torrentName, count = 1, onCancel, onConfirm }: Props) {
+  const styles = useThemedStyles(createStyles);
   const [deleteFiles, setDeleteFiles] = useState(false);
 
   useEffect(() => {
@@ -62,96 +66,97 @@ export function DeleteConfirmModal({ visible, torrentName, count = 1, onCancel, 
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  modal: {
-    backgroundColor: '#111827',
-    borderRadius: 16,
-    padding: 24,
-    width: '100%',
-    maxWidth: 400,
-    borderWidth: 1,
-    borderColor: '#374151',
-    gap: 16,
-  },
-  title: {
-    color: '#f1f5f9',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  message: {
-    color: '#9ca3af',
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  checkRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 4,
-  },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 5,
-    borderWidth: 2,
-    borderColor: '#4b5563',
-    backgroundColor: '#1f2937',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkboxOn: {
-    borderColor: '#3b82f6',
-    backgroundColor: '#2563eb',
-  },
-  checkmark: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 16,
-  },
-  checkLabel: {
-    color: '#d1d5db',
-    fontSize: 14,
-    flex: 1,
-  },
-  buttons: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 4,
-  },
-  cancelBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    backgroundColor: '#1f2937',
-    borderWidth: 1,
-    borderColor: '#374151',
-    alignItems: 'center',
-  },
-  cancelText: {
-    color: '#9ca3af',
-    fontWeight: '600',
-    fontSize: 15,
-  },
-  deleteBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    backgroundColor: '#7f1d1d',
-    borderWidth: 1,
-    borderColor: '#991b1b',
-    alignItems: 'center',
-  },
-  deleteText: {
-    color: '#fca5a5',
-    fontWeight: '700',
-    fontSize: 15,
-  },
-});
+const createStyles = (c: ThemeColors) =>
+StyleSheet.create({
+    overlay: {
+      flex: 1,
+      backgroundColor: c.overlay,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 24,
+    },
+    modal: {
+      backgroundColor: c.surface,
+      borderRadius: 16,
+      padding: 24,
+      width: '100%',
+      maxWidth: 400,
+      borderWidth: 1,
+      borderColor: c.borderStrong,
+      gap: 16,
+    },
+    title: {
+      color: c.text,
+      fontSize: 18,
+      fontWeight: '700',
+    },
+    message: {
+      color: c.textSecondary,
+      fontSize: 14,
+      lineHeight: 20,
+    },
+    checkRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingVertical: 4,
+    },
+    checkbox: {
+      width: 22,
+      height: 22,
+      borderRadius: 5,
+      borderWidth: 2,
+      borderColor: c.borderStrong,
+      backgroundColor: c.surfaceRaised,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    checkboxOn: {
+      borderColor: c.accentBorder,
+      backgroundColor: c.accentStrong,
+    },
+    checkmark: {
+      color: '#ffffff',
+      fontSize: 13,
+      fontWeight: '700',
+      lineHeight: 16,
+    },
+    checkLabel: {
+      color: c.text,
+      fontSize: 14,
+      flex: 1,
+    },
+    buttons: {
+      flexDirection: 'row',
+      gap: 12,
+      marginTop: 4,
+    },
+    cancelBtn: {
+      flex: 1,
+      paddingVertical: 12,
+      borderRadius: 10,
+      backgroundColor: c.surfaceRaised,
+      borderWidth: 1,
+      borderColor: c.borderStrong,
+      alignItems: 'center',
+    },
+    cancelText: {
+      color: c.textSecondary,
+      fontWeight: '600',
+      fontSize: 15,
+    },
+    deleteBtn: {
+      flex: 1,
+      paddingVertical: 12,
+      borderRadius: 10,
+      backgroundColor: c.dangerSoft,
+      borderWidth: 1,
+      borderColor: c.dangerBorder,
+      alignItems: 'center',
+    },
+    deleteText: {
+      color: c.dangerText,
+      fontWeight: '700',
+      fontSize: 15,
+    },
+  });

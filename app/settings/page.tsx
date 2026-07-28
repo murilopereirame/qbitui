@@ -5,7 +5,13 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { TopBar } from "@/components/layout/TopBar";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Magnet, FileText, Info } from "lucide-react";
+import { ThemeModeSelector } from "@/components/theme/ThemeToggle";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { useMetadataApi } from "@/hooks/useMetadataApi";
+import { validateMetadataApiUrl } from "@/lib/metadata-api";
+import { toast } from "sonner";
+import { Magnet, FileText, Info, Palette, ListTree } from "lucide-react";
 
 interface HandlerState {
   status: boolean | null; // null = loading
@@ -57,41 +63,66 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-950">
+    <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar />
       <div className="flex flex-col flex-1 overflow-hidden">
         <TopBar />
         <main className="flex-1 overflow-auto p-8">
-          <h1 className="text-xl font-bold text-white mb-6">Settings</h1>
+          <h1 className="text-xl font-bold text-foreground mb-6">Settings</h1>
+
+          <section className="mb-8">
+            <h2 className="text-sm font-semibold text-fg-muted uppercase tracking-wider mb-4">
+              Appearance
+            </h2>
+            <div className="flex items-start gap-4 p-4 bg-surface border border-line rounded-xl">
+              <div className="mt-0.5 shrink-0">
+                <Palette className="h-5 w-5 text-accent" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-foreground text-sm mb-1">Theme</div>
+                <div className="text-xs text-fg-muted leading-relaxed mb-3">
+                  Choose the light or dark appearance, or follow whatever your operating system is set to.
+                </div>
+                <ThemeModeSelector />
+              </div>
+            </div>
+          </section>
 
           {!isElectron && (
-            <div className="flex items-start gap-3 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl mb-6 text-sm text-yellow-300">
+            <div className="flex items-start gap-3 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl mb-6 text-sm text-yellow-700 dark:text-yellow-300">
               <Info className="h-4 w-4 shrink-0 mt-0.5" />
               <span>Protocol handler registration is only available in the desktop application.</span>
             </div>
           )}
 
+          <section className="mb-8">
+            <h2 className="text-sm font-semibold text-fg-muted uppercase tracking-wider mb-4">
+              Torrent Metadata
+            </h2>
+            <MetadataApiSetting />
+          </section>
+
           <section>
-            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
+            <h2 className="text-sm font-semibold text-fg-muted uppercase tracking-wider mb-4">
               Default Handler Registration
             </h2>
             <div className="space-y-3">
 
               {/* magnet:// */}
-              <div className="flex items-start gap-4 p-4 bg-gray-900/60 border border-white/10 rounded-xl">
+              <div className="flex items-start gap-4 p-4 bg-surface border border-line rounded-xl">
                 <div className="mt-0.5 shrink-0">
-                  <Magnet className="h-5 w-5 text-blue-400" />
+                  <Magnet className="h-5 w-5 text-accent" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-white text-sm mb-1">magnet:// links</div>
-                  <div className="text-xs text-gray-400 leading-relaxed">
+                  <div className="font-medium text-foreground text-sm mb-1">magnet:// links</div>
+                  <div className="text-xs text-fg-muted leading-relaxed">
                     Open magnet links directly in qbitUI. Clicking a magnet link in your browser will automatically launch qbitUI and begin adding the torrent.
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <Label
                     htmlFor="handler-magnet"
-                    className="text-xs text-gray-400 cursor-pointer select-none"
+                    className="text-xs text-fg-muted cursor-pointer select-none"
                   >
                     {handlerLabel(magnet)}
                   </Label>
@@ -105,23 +136,23 @@ export default function SettingsPage() {
               </div>
 
               {/* .torrent files */}
-              <div className="flex items-start gap-4 p-4 bg-gray-900/60 border border-white/10 rounded-xl">
+              <div className="flex items-start gap-4 p-4 bg-surface border border-line rounded-xl">
                 <div className="mt-0.5 shrink-0">
-                  <FileText className="h-5 w-5 text-purple-400" />
+                  <FileText className="h-5 w-5 text-purple-500 dark:text-purple-400" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-white text-sm mb-1">.torrent files</div>
-                  <div className="text-xs text-gray-400 leading-relaxed">
+                  <div className="font-medium text-foreground text-sm mb-1">.torrent files</div>
+                  <div className="text-xs text-fg-muted leading-relaxed">
                     Associate .torrent files with qbitUI so that double-clicking a torrent file opens it in qbitUI.
                   </div>
                   {torrent.status === true && isMac && (
-                    <div className="flex items-start gap-1.5 mt-2 text-xs text-gray-500">
+                    <div className="flex items-start gap-1.5 mt-2 text-xs text-fg-subtle">
                       <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
                       Registered. To set qbitUI as the default, right-click any .torrent file → Open With → qbitUI → &quot;Always Open With&quot;.
                     </div>
                   )}
                   {!isMac && isElectron && (
-                    <div className="flex items-start gap-1.5 mt-2 text-xs text-gray-500">
+                    <div className="flex items-start gap-1.5 mt-2 text-xs text-fg-subtle">
                       <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
                       File association is managed by the installer on this platform.
                     </div>
@@ -131,7 +162,7 @@ export default function SettingsPage() {
                   <div className="flex items-center gap-2 shrink-0">
                     <Label
                       htmlFor="handler-torrent"
-                      className="text-xs text-gray-400 cursor-pointer select-none"
+                      className="text-xs text-fg-muted cursor-pointer select-none"
                     >
                       {handlerLabel(torrent)}
                     </Label>
@@ -143,13 +174,76 @@ export default function SettingsPage() {
                     />
                   </div>
                 ) : (
-                  <div className="text-xs text-gray-500 shrink-0 mt-0.5 italic">Install-time</div>
+                  <div className="text-xs text-fg-subtle shrink-0 mt-0.5 italic">Install-time</div>
                 )}
               </div>
 
             </div>
           </section>
         </main>
+      </div>
+    </div>
+  );
+}
+
+/** Endpoint used to list a magnet link's files before it is added. */
+function MetadataApiSetting() {
+  const { url, setUrl } = useMetadataApi();
+  // Keyed on the stored value so the draft resets whenever it changes.
+  return <MetadataApiForm key={url} url={url} onSave={setUrl} />;
+}
+
+function MetadataApiForm({ url, onSave }: { url: string; onSave: (url: string) => void }) {
+  const [value, setValue] = useState(url);
+  const saved = value.trim() === url;
+
+  function save() {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      onSave("");
+      toast.success("Metadata API cleared");
+      return;
+    }
+    try {
+      onSave(validateMetadataApiUrl(trimmed));
+      toast.success("Metadata API saved");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Invalid URL");
+    }
+  }
+
+  return (
+    <div className="flex items-start gap-4 p-4 bg-surface border border-line rounded-xl">
+      <div className="mt-0.5 shrink-0">
+        <ListTree className="h-5 w-5 text-accent" />
+      </div>
+      <div className="flex-1 min-w-0 space-y-3">
+        <div>
+          <div className="font-medium text-foreground text-sm mb-1">Metadata API</div>
+          <div className="text-xs text-fg-muted leading-relaxed">
+            A magnet link carries no file list. Point qbitUI at a service that returns one and you
+            can choose which files to download before the torrent is added. The magnet is appended
+            as a <code>magnet</code> query parameter, and the response is expected to look like{" "}
+            <code>{'{ "name": "…", "files": [{ "path": "…", "size": 123 }] }'}</code>.
+          </div>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Input
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder="https://example.com/torrent-metadata"
+            spellCheck={false}
+            aria-label="Torrent metadata API URL"
+          />
+          <Button onClick={save} disabled={saved} className="shrink-0">
+            Save
+          </Button>
+        </div>
+        {url && (
+          <p className="text-xs text-fg-subtle break-all">
+            Requests go to <code>{url}{url.includes("?") ? "&" : "?"}magnet=…</code>
+          </p>
+        )}
       </div>
     </div>
   );

@@ -83,8 +83,8 @@ export function TorrentTable() {
   if (isError) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-center gap-3">
-        <div className="text-red-400 font-medium">Failed to load torrents</div>
-        <div className="text-sm text-gray-500">{error instanceof Error ? error.message : "Unknown error"}</div>
+        <div className="text-negative font-medium">Failed to load torrents</div>
+        <div className="text-sm text-fg-subtle">{error instanceof Error ? error.message : "Unknown error"}</div>
       </div>
     );
   }
@@ -94,13 +94,13 @@ export function TorrentTable() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Bulk action bar — always visible */}
-      <div className="flex items-center gap-2 px-4 py-2 bg-gray-900/60 border-b border-white/10 shrink-0">
+      <div className="flex items-center gap-2 px-4 py-2 bg-surface border-b border-line shrink-0">
         {selectedHashes.size > 0 ? (
-          <span className="text-sm text-blue-300 font-medium mr-2">
+          <span className="text-sm text-accent font-medium mr-2">
             {selectedHashes.size} selected
           </span>
         ) : (
-          <span className="text-sm text-gray-600 mr-2">No torrents selected</span>
+          <span className="text-sm text-fg-subtle mr-2">No torrents selected</span>
         )}
         <Button size="sm" variant="secondary" onClick={() => bulkAction("resume")} disabled={selectedHashes.size === 0} className="gap-1.5">
           <Play className="h-3.5 w-3.5" /> Resume
@@ -140,8 +140,8 @@ export function TorrentTable() {
             <col style={{ width: 32 }} />
             {widths.map((w, i) => <col key={i} style={{ width: w }} />)}
           </colgroup>
-          <thead className="sticky top-0 bg-gray-950 z-10">
-            <tr className="border-b border-white/10">
+          <thead className="sticky top-0 bg-background z-10">
+            <tr className="border-b border-line">
               {/* Select all */}
               <th className="pl-3 pr-1 py-2.5 w-8">
                 <Checkbox
@@ -153,9 +153,9 @@ export function TorrentTable() {
                 <th
                   key={label || "actions"}
                   className={cn(
-                    "px-2 py-2.5 text-xs font-medium text-gray-400 select-none relative overflow-visible",
+                    "px-2 py-2.5 text-xs font-medium text-fg-muted select-none relative overflow-visible",
                     align === "right" ? "text-right" : "text-left",
-                    field && "cursor-pointer hover:text-white transition-colors",
+                    field && "cursor-pointer hover:text-foreground transition-colors",
                   )}
                   onClick={() => field && toggleSort(field)}
                 >
@@ -181,15 +181,15 @@ export function TorrentTable() {
           <tbody>
             {isLoading ? (
               Array.from({ length: 6 }).map((_, i) => (
-                <tr key={i} className="border-b border-white/5">
+                <tr key={i} className="border-b border-line-soft">
                   <td colSpan={13} className="px-3 py-3">
-                    <div className="h-4 bg-white/5 rounded animate-pulse" />
+                    <div className="h-4 bg-raise rounded animate-pulse" />
                   </td>
                 </tr>
               ))
             ) : filteredTorrents.length === 0 ? (
               <tr>
-                <td colSpan={13} className="text-center py-16 text-gray-500">
+                <td colSpan={13} className="text-center py-16 text-fg-subtle">
                   <div className="flex flex-col items-center gap-2">
                     <Loader2 className="h-8 w-8 opacity-20" />
                     <span>No torrents found</span>
@@ -206,7 +206,7 @@ export function TorrentTable() {
       </div>
 
       {/* Footer */}
-      <div className="px-4 py-2 border-t border-white/10 text-xs text-gray-500 shrink-0">
+      <div className="px-4 py-2 border-t border-line text-xs text-fg-subtle shrink-0">
         {filteredTorrents.length} torrent{filteredTorrents.length !== 1 ? "s" : ""}
       </div>
 

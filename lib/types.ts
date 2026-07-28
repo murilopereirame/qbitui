@@ -93,6 +93,42 @@ export interface AddTorrentOptions {
   autoTMM?: boolean;
 }
 
+/** One file inside a torrent, as read from its metadata. */
+export interface TorrentMetadataFile {
+  index: number;
+  /** Path as qBittorrent reports it, i.e. including the root folder. */
+  path: string;
+  size: number;
+}
+
+/** Metadata read from a .torrent file before the torrent is added. */
+export interface TorrentMetadata {
+  name: string;
+  infoHash: string | null;
+  totalSize: number;
+  pieceLength: number;
+  private: boolean;
+  comment?: string;
+  createdBy?: string;
+  creationDate?: number;
+  files: TorrentMetadataFile[];
+}
+
+/**
+ * A torrent whose contents are known but which has not been queued yet.
+ * `.torrent` files are parsed locally; magnet links carry no file list, so
+ * theirs comes from the configured metadata API.
+ */
+export interface PrefetchedTorrent {
+  /** Stable client-side id — the file name or the magnet URI. */
+  id: string;
+  source: "file" | "magnet";
+  name: string;
+  totalSize: number;
+  files: TorrentMetadataFile[];
+  infoHash?: string | null;
+}
+
 export interface ApiError {
   error: string;
 }

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="qbitUI">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0.25" y2="1">
+      <stop offset="0" stop-color="#5D9CF3"/>
+      <stop offset="1" stop-color="#2C6CCB"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="1024" height="1024" rx="209.92" fill="url(#bg)"/>
+  <g>
+    <path d="M 840.46 349.76 A 368.64 368.64 0 0 1 840.46 684.48" stroke="#A9CBF6" stroke-width="34.82" stroke-linecap="round" fill="none"/>
+    <path d="M 183.54 684.48 A 368.64 368.64 0 0 1 183.54 349.76" stroke="#A9CBF6" stroke-width="34.82" stroke-linecap="round" fill="none"/>
+    <path d="M 887.67 291.39 A 438.27 438.27 0 0 1 887.67 742.85" stroke="#A9CBF6" stroke-width="34.82" stroke-linecap="round" fill="none"/>
+    <path d="M 136.33 742.85 A 438.27 438.27 0 0 1 136.33 291.39" stroke="#A9CBF6" stroke-width="34.82" stroke-linecap="round" fill="none"/>
+  </g>
+  <circle cx="512.00" cy="517.12" r="289.79" fill="none" stroke="#FAFCFF" stroke-width="30.72"/>
+  <circle cx="386.05" cy="517.12" r="92.16" fill="none" stroke="#FAFCFF" stroke-width="36.86"/>
+  <circle cx="637.95" cy="517.12" r="92.16" fill="none" stroke="#FAFCFF" stroke-width="36.86"/>
+  <rect x="459.78" y="424.96"
+    width="36.86" height="337.92" fill="#FAFCFF"/>
+  <rect x="527.36" y="271.36"
+    width="36.86" height="337.92" fill="#FAFCFF"/>
+</svg>
