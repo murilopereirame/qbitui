@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { TorrentContentPicker } from '@/components/TorrentContentPicker';
 import type { ThemeColors } from '@/constants/theme';
 import { useAddTorrent } from '@/hooks/use-qbit';
+import { useCategories, useTags } from '@/hooks/use-taxonomy';
 import { useTheme } from '@/hooks/use-theme';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
 import { useTorrentPrefetch, type TorrentContents } from '@/hooks/use-torrent-prefetch';
@@ -32,12 +33,15 @@ export default function AddTorrentScreen() {
   const [selectedFile, setSelectedFile] = useState<{ uri: string; name: string } | null>(null);
   const [savepath, setSavepath] = useState('');
   const [category, setCategory] = useState('');
+  const [tags, setTags] = useState('');
   const [paused, setPaused] = useState(false);
   const [contents, setContents] = useState<TorrentContents | null>(null);
   const [selectedIndexes, setSelectedIndexes] = useState<Set<number>>(new Set());
   const { mutate: addTorrent, isPending } = useAddTorrent();
   const { readContents, confirmStaged, confirmMagnet, discard, metadataApiUrl } =
     useTorrentPrefetch();
+  const { data: categories } = useCategories();
+  const { data: knownTags } = useTags();
 
   // A staged .torrent sits stopped inside qBittorrent; make sure it never
   // outlives the screen without the user having confirmed it.
@@ -66,6 +70,7 @@ export default function AddTorrentScreen() {
     setSelectedFile(null);
     setSavepath('');
     setCategory('');
+    setTags('');
     setPaused(false);
     setContents(null);
     setSelectedIndexes(new Set());
@@ -133,8 +138,29 @@ export default function AddTorrentScreen() {
     );
   }
 
+  /** The tag names currently typed into the comma-separated tags field. */
+  function parseTags(text: string): string[] {
+    return text
+      .split(',')
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+  }
+
+  /** Adds or removes a tag from the comma-separated tags field. */
+  function toggleTag(tag: string) {
+    const current = parseTags(tags);
+    const next = current.includes(tag) ? current.filter((entry) => entry !== tag) : [...current, tag];
+    setTags(next.join(', '));
+  }
+
   function handleAdd() {
-    const options = { savepath: savepath || undefined, category: category || undefined, paused };
+    const chosenTags = parseTags(tags);
+    const options = {
+      savepath: savepath || undefined,
+      category: category || undefined,
+      tags: chosenTags.length > 0 ? chosenTags.join(',') : undefined,
+      paused,
+    };
 
     // Contents were listed: apply the file selection.
     if (contents) {
@@ -215,6 +241,8 @@ export default function AddTorrentScreen() {
   }
 
   const magnetCount = parseMagnets(magnetText).length;
+  const categoryNames = Object.keys(categories ?? {}).sort((a, b) => a.localeCompare(b));
+  const selectedTags = parseTags(tags);
   const hasInput = mode === 'magnet' ? magnetCount > 0 : selectedFile !== null;
   const busy =
     isPending || readContents.isPending || confirmStaged.isPending || confirmMagnet.isPending;
@@ -357,6 +385,47 @@ export default function AddTorrentScreen() {
             autoCapitalize="none"
             autoCorrect={false}
           />
+          {categoryNames.length > 0 && (
+            <View style={styles.chipRow}>
+              {categoryNames.map((name) => {
+                const active = category === name;
+                return (
+                  <Pressable
+                    key={name}
+                    style={[styles.chip, active && styles.chipActive]}
+                    onPress={() => setCategory(active ? '' : name)}>
+                    <Text style={[styles.chipText, active && styles.chipTextActive]}>{name}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
+
+          <Text style={styles.label}>Tags (optional)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="tag1, tag2"
+            placeholderTextColor={colors.placeholder}
+            value={tags}
+            onChangeText={setTags}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          {(knownTags?.length ?? 0) > 0 && (
+            <View style={styles.chipRow}>
+              {knownTags?.map((tag) => {
+                const active = selectedTags.includes(tag);
+                return (
+                  <Pressable
+                    key={tag}
+                    style={[styles.chip, active && styles.chipActive]}
+                    onPress={() => toggleTag(tag)}>
+                    <Text style={[styles.chipText, active && styles.chipTextActive]}>{tag}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
 
           <Pressable style={styles.toggleRow} onPress={() => setPaused((v) => !v)}>
             <View style={[styles.toggle, paused && styles.toggleOn]}>
@@ -448,6 +517,18 @@ const createStyles = (c: ThemeColors) =>
     },
     filePickerText: { color: c.textSecondary, fontSize: 14, flex: 1 },
     hint: { color: c.textSubtle, fontSize: 12 },
+    chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 2 },
+    chip: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 20,
+      backgroundColor: c.surface,
+      borderWidth: 1,
+      borderColor: c.borderStrong,
+    },
+    chipActive: { backgroundColor: c.accentSoft, borderColor: c.accentBorder },
+    chipText: { color: c.textSecondary, fontSize: 13 },
+    chipTextActive: { color: c.accentText, fontWeight: '600' },
     secondaryBtn: {
       flexDirection: 'row',
       alignItems: 'center',

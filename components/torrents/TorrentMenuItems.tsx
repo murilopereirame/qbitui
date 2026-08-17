@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Torrent } from "@/lib/types";
-import { useTorrentAction } from "@/hooks/useTorrents";
+import { useTorrentAction, useTorrents } from "@/hooks/useTorrents";
 import { useCategories, useTags, useTorrentTaxonomy } from "@/hooks/useTaxonomy";
 import { parseTorrentTags } from "@/lib/utils";
 import { toast } from "sonner";
@@ -130,7 +130,7 @@ export function useTorrentMenuActions() {
     link.remove();
   }
 
-  return { runAction, deleteTorrents, copyField, exportTorrent, resolveTorrents };
+  return { runAction, deleteTorrents, copyField, exportTorrent };
 }
 
 interface TorrentMenuItemsProps {
@@ -154,7 +154,10 @@ export function TorrentMenuItems({
   onRequestNewCategory,
   onRequestNewTag,
 }: TorrentMenuItemsProps) {
-  const { runAction, copyField, exportTorrent, resolveTorrents } = useTorrentMenuActions();
+  const { runAction, copyField, exportTorrent } = useTorrentMenuActions();
+  // Menu content is only mounted while the menu is open, so subscribing to the
+  // torrent list here keeps the category/tag ticks live at no cost when closed.
+  const { data: allTorrents } = useTorrents();
   const { data: categories } = useCategories();
   const { data: knownTags } = useTags();
   const { setCategory, addTags, removeTags } = useTorrentTaxonomy();
@@ -162,7 +165,8 @@ export function TorrentMenuItems({
   const isSingle = count <= 1;
   const isPaused = ["pausedDL", "pausedUP", "stoppedDL", "stoppedUP"].includes(torrent.state);
 
-  const targets = resolveTorrents(targetHashes);
+  const wanted = new Set(targetHashes);
+  const targets = (allTorrents ?? []).filter((t) => wanted.has(t.hash));
   // Category names known to qBittorrent plus any the targets already carry.
   const categoryNames = [
     ...new Set([

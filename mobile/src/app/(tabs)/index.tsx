@@ -23,13 +23,14 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
+import { CategoryPickerSheet, TagPickerSheet, TaxonomyFilterSheet } from '@/components/TaxonomySheets';
 import { TorrentActionSheet } from '@/components/TorrentActionSheet';
 import { stateColor, type ThemeColors } from '@/constants/theme';
 import { useTorrentAction, useTorrents, useTransfer } from '@/hooks/use-qbit';
 import { useTheme } from '@/hooks/use-theme';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
 import { Torrent, TorrentAction, TorrentFilter } from '@/lib/types';
-import { formatBytes, formatETA, formatRatio, formatSpeed, getStateColor, getStateLabel, toPercent } from '@/lib/utils';
+import { formatBytes, formatETA, formatRatio, formatSpeed, getStateColor, getStateLabel, parseTorrentTags, toPercent } from '@/lib/utils';
 import { SortField, useUIStore } from '@/store';
 
 type MaterialIconName = React.ComponentProps<typeof MaterialIcons>['name'];
@@ -88,8 +89,12 @@ export default function TorrentsScreen() {
     sortField,
     sortDir,
     toggleSort,
+    categoryFilter,
+    setCategoryFilter,
+    tagFilter,
+    setTagFilter,
   } = useUIStore();
-  const { filteredTorrents, isLoading, isError, refetch, isFetching } = useTorrents();
+  const { data: allTorrents, filteredTorrents, isLoading, isError, refetch, isFetching } = useTorrents();
   const { data: transfer } = useTransfer();
   const { mutate: doAction } = useTorrentAction();
   const [refreshing, setRefreshing] = useState(false);
@@ -97,9 +102,25 @@ export default function TorrentsScreen() {
   const [bulkDeleteVisible, setBulkDeleteVisible] = useState(false);
   const [sheetTarget, setSheetTarget] = useState<Torrent | null>(null);
   const [sortModalVisible, setSortModalVisible] = useState(false);
+  const [filterSheetVisible, setFilterSheetVisible] = useState(false);
+  const [selectionPicker, setSelectionPicker] = useState<'category' | 'tags' | null>(null);
 
   const allSelected =
     filteredTorrents.length > 0 && filteredTorrents.every((t) => selectedHashes.has(t.hash));
+  const hasTaxonomyFilter = categoryFilter !== null || tagFilter !== null;
+
+  const selectedTorrents = (allTorrents ?? []).filter((t) => selectedHashes.has(t.hash));
+  // The pickers tick what the whole selection shares, so a tap applies to all of it.
+  const sharedCategory = selectedTorrents.every(
+    (t) => (t.category ?? '') === (selectedTorrents[0]?.category ?? '')
+  )
+    ? selectedTorrents[0]?.category ?? ''
+    : '';
+  const sharedTags = selectedTorrents.length
+    ? parseTorrentTags(selectedTorrents[0].tags).filter((tag) =>
+        selectedTorrents.every((t) => parseTorrentTags(t.tags).includes(tag))
+      )
+    : [];
 
   function triggerSelectionExit() {
     clearSelection();
@@ -185,6 +206,25 @@ export default function TorrentsScreen() {
                   </Pressable>
                 );
               })}
+              {(['category', 'tags'] as const).map((kind) => {
+                const disabled = selectedHashes.size === 0;
+                return (
+                  <Pressable
+                    key={kind}
+                    style={[styles.selActionBtn, disabled && styles.selActionBtnDisabled]}
+                    disabled={disabled}
+                    onPress={() => setSelectionPicker(kind)}>
+                    <MaterialIcons
+                      name={kind === 'category' ? 'folder' : 'label'}
+                      size={18}
+                      color={colors.text}
+                    />
+                    <Text style={styles.selActionText}>
+                      {kind === 'category' ? 'Category' : 'Tags'}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </ScrollView>
           </View>
         </>
@@ -226,23 +266,56 @@ export default function TorrentsScreen() {
 
       {/* Filter tabs */}
       <View style={styles.filterWrap}>
-        <ScrollView
-          horizontal
-          style={styles.filterScroll}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterRow}>
-          {FILTERS.map(({ key, label }) => (
-            <Pressable
-              key={key}
-              onPress={() => setFilter(key)}
-              style={[styles.filterChip, filter === key && styles.filterChipActive]}>
-              <Text style={[styles.filterLabel, filter === key && styles.filterLabelActive]}>
-                {label}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
+        <View style={styles.filterBar}>
+          <ScrollView
+            horizontal
+            style={styles.filterScroll}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterRow}>
+            {FILTERS.map(({ key, label }) => (
+              <Pressable
+                key={key}
+                onPress={() => setFilter(key)}
+                style={[styles.filterChip, filter === key && styles.filterChipActive]}>
+                <Text style={[styles.filterLabel, filter === key && styles.filterLabelActive]}>
+                  {label}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+          <Pressable
+            onPress={() => setFilterSheetVisible(true)}
+            style={[styles.labelsBtn, hasTaxonomyFilter && styles.labelsBtnActive]}
+            hitSlop={6}
+            accessibilityLabel="Filter by category or tag">
+            <MaterialIcons
+              name="filter-list"
+              size={18}
+              color={hasTaxonomyFilter ? colors.accentText : colors.textSecondary}
+            />
+          </Pressable>
+        </View>
       </View>
+
+      {/* Active category / tag filters */}
+      {hasTaxonomyFilter && (
+        <View style={styles.activeFilterRow}>
+          {categoryFilter !== null && (
+            <ActiveFilterChip
+              icon="folder"
+              label={categoryFilter || 'Uncategorized'}
+              onClear={() => setCategoryFilter(null)}
+            />
+          )}
+          {tagFilter !== null && (
+            <ActiveFilterChip
+              icon="label"
+              label={tagFilter || 'Untagged'}
+              onClear={() => setTagFilter(null)}
+            />
+          )}
+        </View>
+      )}
 
       {/* Count + Sort */}
       <View style={styles.countRow}>
@@ -403,6 +476,25 @@ export default function TorrentsScreen() {
         onDelete={(t) => confirmDelete(t.hash, t.name)}
       />
 
+      <TaxonomyFilterSheet
+        visible={filterSheetVisible}
+        onClose={() => setFilterSheetVisible(false)}
+      />
+
+      <CategoryPickerSheet
+        visible={selectionPicker === 'category'}
+        hashes={Array.from(selectedHashes)}
+        current={sharedCategory}
+        onClose={() => setSelectionPicker(null)}
+      />
+
+      <TagPickerSheet
+        visible={selectionPicker === 'tags'}
+        hashes={Array.from(selectedHashes)}
+        current={sharedTags}
+        onClose={() => setSelectionPicker(null)}
+      />
+
       <DeleteConfirmModal
         visible={bulkDeleteVisible}
         count={selectedHashes.size}
@@ -418,6 +510,32 @@ export default function TorrentsScreen() {
         }}
       />
     </SafeAreaView>
+  );
+}
+
+/** Shows an active category/tag filter with a way to clear it. */
+function ActiveFilterChip({
+  icon,
+  label,
+  onClear,
+}: {
+  icon: MaterialIconName;
+  label: string;
+  onClear: () => void;
+}) {
+  const styles = useThemedStyles(createStyles);
+  const colors = useTheme();
+
+  return (
+    <View style={styles.activeChip}>
+      <MaterialIcons name={icon} size={13} color={colors.accentText} />
+      <Text style={styles.activeChipText} numberOfLines={1}>
+        {label}
+      </Text>
+      <Pressable onPress={onClear} hitSlop={8} accessibilityLabel={`Clear ${label} filter`}>
+        <MaterialIcons name="close" size={14} color={colors.accentText} />
+      </Pressable>
+    </View>
   );
 }
 
@@ -488,7 +606,39 @@ StyleSheet.create({
       minHeight: 48,
       justifyContent: 'center',
     },
-    filterScroll: { flexGrow: 0 },
+    filterBar: { flexDirection: 'row', alignItems: 'center' },
+    filterScroll: { flexGrow: 0, flexShrink: 1 },
+    labelsBtn: {
+      marginRight: 12,
+      marginLeft: 4,
+      padding: 8,
+      borderRadius: 20,
+      backgroundColor: c.surface,
+      borderWidth: 1,
+      borderColor: c.borderStrong,
+    },
+    labelsBtnActive: { backgroundColor: c.accentSoft, borderColor: c.accentBorder },
+    activeFilterRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      paddingHorizontal: 12,
+      paddingBottom: 6,
+    },
+    activeChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      maxWidth: 220,
+      paddingLeft: 10,
+      paddingRight: 8,
+      paddingVertical: 5,
+      borderRadius: 20,
+      backgroundColor: c.accentSoft,
+      borderWidth: 1,
+      borderColor: c.accentBorder,
+    },
+    activeChipText: { color: c.accentText, fontSize: 12, fontWeight: '600', flexShrink: 1 },
     filterRow: { paddingHorizontal: 12, paddingVertical: 6, gap: 8, alignItems: 'center' },
     filterChip: {
       paddingHorizontal: 12,

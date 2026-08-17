@@ -14,7 +14,8 @@ A modern, production-ready web interface for qBittorrent built with Next.js, Tai
 - 📁 **Torrent file upload** — drag-and-drop `.torrent` file upload with multi-file support
 - 🗂️ **Content preview before adding** — `.torrent` files are parsed locally, and magnet links are looked up through a metadata API you configure in Settings, so you can pick which files to download before the torrent starts (also available in the mobile app)
 - 📊 **Live updates** — 2-second polling for real-time progress, speeds, and state
-- 🔍 **Filter & search** — filter by state (all/downloading/seeding/paused/completed/error)
+- 🔍 **Filter & search** — filter by state (all/downloading/seeding/paused/completed/error), category, or tag
+- 🏷️ **Categories & tags** — create, edit and delete them, assign them to torrents in bulk, and filter the list by them (web, desktop and the Expo mobile app)
 - 📦 **Bulk actions** — select multiple torrents and apply actions in bulk
 - 🌗 **Light & dark themes** — switch from the top bar or Settings, or follow the operating system (web, desktop and the Expo mobile app)
 - 📱 **Responsive** — works on desktop and mobile
@@ -238,10 +239,12 @@ in an encrypted httpOnly cookie that is inaccessible to JavaScript.
 | `/api/torrents` | GET | List torrents (with filter support) |
 | `/api/torrents` | POST | Add magnet link or torrent file (optionally skipping deselected files) |
 | `/api/torrents/prefetch` | POST | Read a torrent's file list before adding it (parses `.torrent` uploads, queries the metadata API for magnets) |
-| `/api/torrents/action` | POST | Perform action (pause/resume/delete/recheck/reannounce/top/up/down/bottom) |
+| `/api/torrents/action` | POST | Perform action (pause/resume/delete/recheck/reannounce/top/up/down/bottom/setCategory/addTags/removeTags) |
 | `/api/torrents/details` | GET | Get detailed torrent data (properties/trackers/peers/web seeds/files) |
 | `/api/torrents/file-priority` | POST | Change torrent file priority in batch |
 | `/api/transfer` | GET | Global transfer info (speeds) |
+| `/api/categories` | GET/POST/PATCH/DELETE | List, create, edit (save path) and remove categories |
+| `/api/tags` | GET/POST/DELETE | List, create and delete tags |
 
 ## Project Structure
 

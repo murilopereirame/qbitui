@@ -62,6 +62,16 @@ export default function SettingsScreen() {
         )}
 
         <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Library</Text>
+          <View style={styles.card}>
+            <Pressable style={styles.navRow} onPress={() => router.push('/labels')}>
+              <Text style={styles.navLabel}>Categories &amp; Tags</Text>
+              <Text style={styles.navArrow}>›</Text>
+            </Pressable>
+          </View>
+        </View>
+
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>Torrent Metadata</Text>
           <View style={styles.card}>
             <MetadataApiField />

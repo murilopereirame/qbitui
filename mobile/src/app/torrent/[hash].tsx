@@ -19,7 +19,7 @@ import { useSetTorrentFilePriority, useTorrentDetails, useTorrents } from '@/hoo
 import { useSpeedHistory } from '@/hooks/use-speed-history';
 import { useTheme } from '@/hooks/use-theme';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
-import { formatBytes, formatDate, formatETA, formatRatio, formatSpeed, toPercent } from '@/lib/utils';
+import { formatBytes, formatDate, formatETA, formatRatio, formatSpeed, parseTorrentTags, toPercent } from '@/lib/utils';
 import { TorrentFile } from '@/lib/types';
 
 type Tab = 'properties' | 'trackers' | 'files';
@@ -141,6 +141,8 @@ export default function TorrentDetailsScreen() {
           ) : properties.data ? (
             <>
               <PropRow label="Save Path" value={properties.data.save_path} />
+              <PropRow label="Category" value={torrent?.category || '—'} />
+              <PropRow label="Tags" value={parseTorrentTags(torrent?.tags).join(', ') || '—'} />
               <PropRow label="Created By" value={properties.data.created_by || '—'} />
               <PropRow label="Comment" value={properties.data.comment || '—'} />
               <PropRow label="Total Size" value={formatBytes(properties.data.total_size)} />
