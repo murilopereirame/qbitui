@@ -5,6 +5,7 @@ import {
   TorrentProperties,
   TorrentTracker,
   TorrentFile,
+  Category,
 } from './types';
 import { logger } from './logger';
 
@@ -124,12 +125,56 @@ export class QBitAPI {
     if (options.paused) form.append('paused', 'true');
   }
 
+  async getCategories(): Promise<Record<string, Category>> {
+    const res = await this.loggedFetch(this.url('/api/v2/torrents/categories'), {
+      headers: this.headers,
+    });
+    if (!res.ok) return {};
+    return res.json();
+  }
+
+  async getTags(): Promise<string[]> {
+    const res = await this.loggedFetch(this.url('/api/v2/torrents/tags'), {
+      headers: this.headers,
+    });
+    if (!res.ok) return [];
+    const tags = await res.json();
+    return Array.isArray(tags) ? tags.filter((tag): tag is string => typeof tag === 'string') : [];
+  }
+
+  async createCategory(name: string, savePath = ''): Promise<void> {
+    await this.formPost('/api/v2/torrents/createCategory', { category: name, savePath });
+  }
+
+  async editCategory(name: string, savePath = ''): Promise<void> {
+    await this.formPost('/api/v2/torrents/editCategory', { category: name, savePath });
+  }
+
+  /** qBittorrent expects one category name per line. */
+  async removeCategories(names: string[]): Promise<void> {
+    await this.formPost('/api/v2/torrents/removeCategories', { categories: names.join('\n') });
+  }
+
+  async createTags(tags: string[]): Promise<void> {
+    await this.formPost('/api/v2/torrents/createTags', { tags: tags.join(',') });
+  }
+
+  /** Deletes the tags themselves; torrents carrying them simply lose them. */
+  async deleteTags(tags: string[]): Promise<void> {
+    await this.formPost('/api/v2/torrents/deleteTags', { tags: tags.join(',') });
+  }
+
+  /** An empty category removes the torrents from whichever category they were in. */
   async setCategory(hashes: string[], category: string): Promise<void> {
     await this.formPost('/api/v2/torrents/setCategory', { hashes: hashes.join('|'), category });
   }
 
   async addTags(hashes: string[], tags: string): Promise<void> {
     await this.formPost('/api/v2/torrents/addTags', { hashes: hashes.join('|'), tags });
+  }
+
+  async removeTags(hashes: string[], tags: string): Promise<void> {
+    await this.formPost('/api/v2/torrents/removeTags', { hashes: hashes.join('|'), tags });
   }
 
   async setLocation(hashes: string[], location: string): Promise<void> {
@@ -267,6 +312,10 @@ export class QBitAPI {
     if (!res.ok) throw new Error(`Failed to change file priority: ${res.status}`);
   }
 
+  /**
+   * qBittorrent answers 409 with a plain-text reason for rejected names
+   * ("Category name is invalid"), so that body is preferred over the status.
+   */
   private async formPost(path: string, fields: Record<string, string>): Promise<void> {
     const form = new FormData();
     for (const [key, value] of Object.entries(fields)) form.append(key, value);
@@ -275,7 +324,9 @@ export class QBitAPI {
       headers: this.headers,
       body: form,
     });
-    if (!res.ok) throw new Error(`Request to ${path} failed: ${res.status}`);
+    if (res.ok) return;
+    const reason = (await res.text().catch(() => '')).trim();
+    throw new Error(reason || `Request to ${path} failed: ${res.status}`);
   }
 
   private async torrentAction(path: string, hashes: string[]): Promise<void> {

@@ -111,6 +111,10 @@ export function useTorrentPrefetch() {
       if (excludedIndexes.length > 0) {
         await api.setFilePriority(hash, excludedIndexes, PRIORITY_SKIP);
       }
+      // The torrent was staged before these were known, so they are applied here.
+      if (options.savepath) await api.setLocation([hash], options.savepath);
+      if (options.category) await api.setCategory([hash], options.category);
+      if (options.tags) await api.addTags([hash], options.tags);
       if (!options.paused) await api.resumeTorrents([hash]);
     },
     onSuccess: () => {

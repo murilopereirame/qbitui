@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { QBitAPI } from '@/lib/qbit-api';
 import { Torrent, TorrentAction, AddTorrentOptions } from '@/lib/types';
-import { FILTER_STATES } from '@/lib/utils';
+import { FILTER_STATES, parseTorrentTags } from '@/lib/utils';
 import { useAuthStore, useUIStore } from '@/store';
 import { logger } from '@/lib/logger';
 
@@ -20,7 +20,7 @@ export function useApi(): QBitAPI | null {
 
 export function useTorrents() {
   const api = useApi();
-  const { filter, search, sortField, sortDir } = useUIStore();
+  const { filter, categoryFilter, tagFilter, search, sortField, sortDir } = useUIStore();
 
   const query = useQuery<Torrent[]>({
     queryKey: ['torrents'],
@@ -40,6 +40,18 @@ export function useTorrents() {
           return t.progress === 1 || states.includes(t.state);
         }
         return states.includes(t.state);
+      });
+    }
+
+    // A null taxonomy filter means "any"; the empty string means "has none".
+    if (categoryFilter !== null) {
+      data = data.filter((t) => (t.category ?? '') === categoryFilter);
+    }
+
+    if (tagFilter !== null) {
+      data = data.filter((t) => {
+        const tags = parseTorrentTags(t.tags);
+        return tagFilter === '' ? tags.length === 0 : tags.includes(tagFilter);
       });
     }
 
@@ -66,7 +78,7 @@ export function useTorrents() {
     });
 
     return data;
-  }, [query.data, filter, search, sortField, sortDir]);
+  }, [query.data, filter, categoryFilter, tagFilter, search, sortField, sortDir]);
 
   return { ...query, filteredTorrents };
 }

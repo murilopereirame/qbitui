@@ -46,7 +46,8 @@ function AuthGuard() {
     if (isLoading) return;
 
     const inAuthGroup = segments[0] === 'login';
-    const inProtectedGroup = segments[0] === '(tabs)' || segments[0] === 'torrent';
+    const inProtectedGroup =
+      segments[0] === '(tabs)' || segments[0] === 'torrent' || segments[0] === 'labels';
 
     if (!credentials && inProtectedGroup) {
       router.replace('/login');
@@ -84,6 +85,10 @@ export default function RootLayout() {
           <Stack.Screen
             name="logs"
             options={{ headerShown: true, title: 'App Logs', presentation: 'card', headerBackTitle: 'Settings' }}
+          />
+          <Stack.Screen
+            name="labels"
+            options={{ headerShown: true, title: 'Categories & Tags', presentation: 'card' }}
           />
         </Stack>
       </ThemeProvider>

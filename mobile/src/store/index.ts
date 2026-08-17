@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import * as Keychain from 'react-native-keychain';
-import { TorrentFilter } from '@/lib/types';
+import { TaxonomyFilter, TorrentFilter } from '@/lib/types';
 import { logger } from '@/lib/logger';
 
 const KEYCHAIN_SERVICE = 'qbitui';
@@ -23,6 +23,10 @@ export type SortDir = 'asc' | 'desc';
 
 interface UIState {
   filter: TorrentFilter;
+  /** Selected category: null shows every category, '' only uncategorised torrents. */
+  categoryFilter: TaxonomyFilter;
+  /** Selected tag: null shows every tag, '' only untagged torrents. */
+  tagFilter: TaxonomyFilter;
   search: string;
   activeTorrentHash: string | undefined;
   isAddModalOpen: boolean;
@@ -31,6 +35,8 @@ interface UIState {
   sortField: SortField;
   sortDir: SortDir;
   setFilter: (filter: TorrentFilter) => void;
+  setCategoryFilter: (category: TaxonomyFilter) => void;
+  setTagFilter: (tag: TaxonomyFilter) => void;
   setSearch: (search: string) => void;
   setActiveTorrentHash: (hash?: string) => void;
   setAddModalOpen: (open: boolean) => void;
@@ -77,6 +83,8 @@ export const useAuthStore = create<AuthState>((set) => ({
 
 export const useUIStore = create<UIState>((set) => ({
   filter: 'all',
+  categoryFilter: null,
+  tagFilter: null,
   search: '',
   activeTorrentHash: undefined,
   isAddModalOpen: false,
@@ -85,6 +93,8 @@ export const useUIStore = create<UIState>((set) => ({
   sortField: 'added_on',
   sortDir: 'desc',
   setFilter: (filter) => set({ filter }),
+  setCategoryFilter: (categoryFilter) => set({ categoryFilter }),
+  setTagFilter: (tagFilter) => set({ tagFilter }),
   setSearch: (search) => set({ search }),
   setActiveTorrentHash: (activeTorrentHash) => set({ activeTorrentHash }),
   setAddModalOpen: (open) => set({ isAddModalOpen: open }),

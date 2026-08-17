@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Torrent, TorrentAction, AddTorrentOptions } from "@/lib/types";
+import { parseTorrentTags } from "@/lib/utils";
 import { useUIStore } from "@/store";
 import { useMemo } from "react";
 
@@ -28,7 +29,7 @@ async function performAction(action: TorrentAction, hashes: string[], deleteFile
 }
 
 export function useTorrents() {
-  const { filter, search, sortField, sortDirection } = useUIStore();
+  const { filter, categoryFilter, tagFilter, search, sortField, sortDirection } = useUIStore();
 
   const query = useQuery<Torrent[]>({
     queryKey: ["torrents"],
@@ -57,6 +58,18 @@ export function useTorrents() {
           default:
             return true;
         }
+      });
+    }
+
+    // A null taxonomy filter means "any"; the empty string means "has none".
+    if (categoryFilter !== null) {
+      data = data.filter((t) => (t.category ?? "") === categoryFilter);
+    }
+
+    if (tagFilter !== null) {
+      data = data.filter((t) => {
+        const tags = parseTorrentTags(t.tags);
+        return tagFilter === "" ? tags.length === 0 : tags.includes(tagFilter);
       });
     }
 
@@ -93,7 +106,7 @@ export function useTorrents() {
     });
 
     return data;
-  }, [query.data, filter, search, sortField, sortDirection]);
+  }, [query.data, filter, categoryFilter, tagFilter, search, sortField, sortDirection]);
 
   return { ...query, filteredTorrents: filtered };
 }

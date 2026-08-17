@@ -126,3 +126,14 @@ export function getStateColor(state: TorrentState): string {
       return STATE_COLORS.gray;
   }
 }
+
+/** Splits qBittorrent's comma-separated `tags` field into trimmed tag names. */
+export function parseTorrentTags(tags: string | undefined): string[] {
+  if (!tags) return [];
+  return tags
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
+
+export const TAG_BADGE_COLOR = STATE_COLORS.cyan;

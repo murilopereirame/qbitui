@@ -64,7 +64,26 @@ export type TorrentAction =
   | "topPrio"
   | "increasePrio"
   | "decreasePrio"
-  | "bottomPrio";
+  | "bottomPrio"
+  | "setCategory"
+  | "addTags"
+  | "removeTags";
+
+/** A qBittorrent category and the save path torrents assigned to it default to. */
+export interface Category {
+  name: string;
+  savePath: string;
+}
+
+/**
+ * Category/tag selection in the sidebar.  `null` means "don't filter";
+ * the empty string means "torrents without a category / without any tag",
+ * matching how qBittorrent itself reports them.
+ */
+export type TaxonomyFilter = string | null;
+
+/** The empty-string sentinel qBittorrent uses for uncategorised/untagged torrents. */
+export const NONE_FILTER = "";
 
 export interface TransferInfo {
   dl_info_speed: number;
@@ -227,6 +246,7 @@ export type SortField =
   | "num_seeds"
   | "num_leechs"
   | "category"
+  | "tags"
   | "state"
   | "added_on";
 

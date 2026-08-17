@@ -16,12 +16,13 @@ import {
   View,
 } from 'react-native';
 
+import { CategoryPickerSheet, TagPickerSheet } from '@/components/TaxonomySheets';
 import { stateColor as stateTokenColor, type ThemeColors } from '@/constants/theme';
-import { useApi, useTorrentAction } from '@/hooks/use-qbit';
+import { useApi, useTorrentAction, useTorrents } from '@/hooks/use-qbit';
 import { useTheme } from '@/hooks/use-theme';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
 import { Torrent, TorrentAction } from '@/lib/types';
-import { FILTER_STATES, getStateColor, getStateLabel } from '@/lib/utils';
+import { FILTER_STATES, getStateColor, getStateLabel, parseTorrentTags } from '@/lib/utils';
 
 type MaterialIconName = React.ComponentProps<typeof MaterialIcons>['name'];
 
@@ -48,18 +49,25 @@ function sanitizeFileName(name: string): string {
   return name.replace(/[^a-zA-Z0-9 ._-]/g, '_').slice(0, 200) || 'torrent';
 }
 
-export function TorrentActionSheet({ torrent, onClose, onSelect, onDelete }: Props) {
+export function TorrentActionSheet({ torrent: target, onClose, onSelect, onDelete }: Props) {
   const styles = useThemedStyles(createStyles);
   const colors = useTheme();
   const api = useApi();
   const { mutate: doAction } = useTorrentAction();
+  const { data: torrents } = useTorrents();
   const [feedback, setFeedback] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [picker, setPicker] = useState<'category' | 'tags' | null>(null);
 
-  const visible = !!torrent;
+  const visible = !!target;
+  // The sheet is opened with a snapshot of the row; category and tags change
+  // from inside it, so read them back from the live torrent list.
+  const torrent = torrents?.find((t) => t.hash === target?.hash) ?? target;
+  const tags = parseTorrentTags(torrent?.tags);
 
   function close() {
     setFeedback(null);
+    setPicker(null);
     onClose();
   }
 
@@ -171,6 +179,31 @@ export function TorrentActionSheet({ torrent, onClose, onSelect, onDelete }: Pro
 
                 <View style={styles.divider} />
 
+                {/* Organise */}
+                <Text style={styles.sectionLabel}>Organise</Text>
+                <ListRow
+                  icon="folder"
+                  label="Category"
+                  onPress={() => setPicker('category')}
+                  trailing={
+                    <Text style={styles.trailingText} numberOfLines={1}>
+                      {torrent.category || 'None'}
+                    </Text>
+                  }
+                />
+                <ListRow
+                  icon="label"
+                  label="Tags"
+                  onPress={() => setPicker('tags')}
+                  trailing={
+                    <Text style={styles.trailingText} numberOfLines={1}>
+                      {tags.length > 0 ? tags.join(', ') : 'None'}
+                    </Text>
+                  }
+                />
+
+                <View style={styles.divider} />
+
                 {/* Copy */}
                 <Text style={styles.sectionLabel}>Copy</Text>
                 <ListRow icon="title" label="Name" onPress={() => copy('Name', torrent.name)} />
@@ -213,6 +246,20 @@ export function TorrentActionSheet({ torrent, onClose, onSelect, onDelete }: Pro
               <Pressable style={styles.cancelBtn} onPress={close}>
                 <Text style={styles.cancelText}>Cancel</Text>
               </Pressable>
+
+              {/* Nested inside this modal so iOS presents them over the sheet. */}
+              <CategoryPickerSheet
+                visible={picker === 'category'}
+                hashes={[torrent.hash]}
+                current={torrent.category ?? ''}
+                onClose={() => setPicker(null)}
+              />
+              <TagPickerSheet
+                visible={picker === 'tags'}
+                hashes={[torrent.hash]}
+                current={tags}
+                onClose={() => setPicker(null)}
+              />
             </>
           )}
         </Pressable>
@@ -358,7 +405,8 @@ StyleSheet.create({
     listRowDisabled: { opacity: 0.5 },
     listLabel: { color: c.text, fontSize: 15, fontWeight: '500', flex: 1 },
     listLabelDanger: { color: c.dangerText },
-    listTrailing: { minWidth: 20, alignItems: 'flex-end' },
+    listTrailing: { minWidth: 20, maxWidth: 160, alignItems: 'flex-end' },
+    trailingText: { color: c.textSubtle, fontSize: 13 },
     cancelBtn: {
       marginTop: 8,
       paddingVertical: 13,

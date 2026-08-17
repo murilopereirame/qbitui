@@ -71,6 +71,19 @@ export type TorrentAction =
   | "decreasePrio"
   | "bottomPrio";
 
+/** A qBittorrent category and the save path torrents assigned to it default to. */
+export interface Category {
+  name: string;
+  savePath: string;
+}
+
+/**
+ * Category/tag selection on the torrent list.  `null` means "don't filter";
+ * the empty string means "torrents without a category / without any tag",
+ * matching how qBittorrent itself reports them.
+ */
+export type TaxonomyFilter = string | null;
+
 export interface TransferInfo {
   dl_info_speed: number;
   dl_info_data: number;

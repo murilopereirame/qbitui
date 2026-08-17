@@ -143,3 +143,12 @@ function base32ToHex(value: string): string | null {
   }
   return hex.length === 40 ? hex : null;
 }
+
+/** Splits qBittorrent's comma-separated `tags` field into trimmed tag names. */
+export function parseTorrentTags(tags: string | undefined): string[] {
+  if (!tags) return [];
+  return tags
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
