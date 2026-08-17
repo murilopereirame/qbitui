@@ -21,6 +21,7 @@ import { TorrentFilter } from "@/lib/types";
 import { useUIStore } from "@/store";
 import { useTorrents } from "@/hooks/useTorrents";
 import { RequestLogsDialog } from "./RequestLogsDialog";
+import { TaxonomyNav } from "./TaxonomyNav";
 
 const NAV_ITEMS: { label: string; filter: TorrentFilter; icon: React.ReactNode }[] = [
   { label: "All Torrents", filter: "all", icon: <List className="h-4 w-4" /> },
@@ -86,6 +87,8 @@ export function Sidebar() {
             </span>
           </button>
         ))}
+
+        <TaxonomyNav />
       </nav>
 
       {/* Footer */}

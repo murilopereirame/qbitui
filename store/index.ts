@@ -1,8 +1,12 @@
 import { create } from "zustand";
-import { TorrentFilter, SortField, SortDirection } from "@/lib/types";
+import { TorrentFilter, SortField, SortDirection, TaxonomyFilter } from "@/lib/types";
 
 interface UIState {
   filter: TorrentFilter;
+  /** Selected category: null shows every category, "" only uncategorised torrents. */
+  categoryFilter: TaxonomyFilter;
+  /** Selected tag: null shows every tag, "" only untagged torrents. */
+  tagFilter: TaxonomyFilter;
   search: string;
   sortField: SortField;
   sortDirection: SortDirection;
@@ -13,6 +17,8 @@ interface UIState {
   pendingTorrentFile: { name: string; data: string } | null;
 
   setFilter: (filter: TorrentFilter) => void;
+  setCategoryFilter: (category: TaxonomyFilter) => void;
+  setTagFilter: (tag: TaxonomyFilter) => void;
   setSearch: (search: string) => void;
   setSortField: (field: SortField) => void;
   setSortDirection: (dir: SortDirection) => void;
@@ -28,6 +34,8 @@ interface UIState {
 
 export const useUIStore = create<UIState>((set, get) => ({
   filter: "all",
+  categoryFilter: null,
+  tagFilter: null,
   search: "",
   sortField: "added_on",
   sortDirection: "desc",
@@ -38,6 +46,8 @@ export const useUIStore = create<UIState>((set, get) => ({
   pendingTorrentFile: null,
 
   setFilter: (filter) => set({ filter, selectedHashes: new Set() }),
+  setCategoryFilter: (categoryFilter) => set({ categoryFilter, selectedHashes: new Set() }),
+  setTagFilter: (tagFilter) => set({ tagFilter, selectedHashes: new Set() }),
   setSearch: (search) => set({ search }),
   setSortField: (sortField) => set({ sortField }),
   setSortDirection: (sortDirection) => set({ sortDirection }),

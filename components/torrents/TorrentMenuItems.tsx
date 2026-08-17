@@ -4,6 +4,8 @@ import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Torrent } from "@/lib/types";
 import { useTorrentAction } from "@/hooks/useTorrents";
+import { useCategories, useTags, useTorrentTaxonomy } from "@/hooks/useTaxonomy";
+import { parseTorrentTags } from "@/lib/utils";
 import { toast } from "sonner";
 import {
   Play,
@@ -14,14 +16,19 @@ import {
   ChevronsDown,
   ArrowUp,
   ArrowDown,
+  Check,
   Copy,
   FileDown,
+  Folder,
+  Plus,
+  Tag,
   Trash2,
   ListOrdered,
   Type,
   Hash,
   Magnet,
   FolderOpen,
+  X,
 } from "lucide-react";
 
 /**
@@ -123,7 +130,7 @@ export function useTorrentMenuActions() {
     link.remove();
   }
 
-  return { runAction, deleteTorrents, copyField, exportTorrent };
+  return { runAction, deleteTorrents, copyField, exportTorrent, resolveTorrents };
 }
 
 interface TorrentMenuItemsProps {
@@ -133,6 +140,10 @@ interface TorrentMenuItemsProps {
   /** Hashes the menu acts on — the whole selection when the row is selected. */
   targetHashes: string[];
   onRequestDelete: () => void;
+  /** Opens the "new category" dialog; the category is applied to the targets. */
+  onRequestNewCategory: () => void;
+  /** Opens the "new tag" dialog; the tags are applied to the targets. */
+  onRequestNewTag: () => void;
 }
 
 export function TorrentMenuItems({
@@ -140,11 +151,72 @@ export function TorrentMenuItems({
   torrent,
   targetHashes,
   onRequestDelete,
+  onRequestNewCategory,
+  onRequestNewTag,
 }: TorrentMenuItemsProps) {
-  const { runAction, copyField, exportTorrent } = useTorrentMenuActions();
+  const { runAction, copyField, exportTorrent, resolveTorrents } = useTorrentMenuActions();
+  const { data: categories } = useCategories();
+  const { data: knownTags } = useTags();
+  const { setCategory, addTags, removeTags } = useTorrentTaxonomy();
   const count = targetHashes.length;
   const isSingle = count <= 1;
   const isPaused = ["pausedDL", "pausedUP", "stoppedDL", "stoppedUP"].includes(torrent.state);
+
+  const targets = resolveTorrents(targetHashes);
+  // Category names known to qBittorrent plus any the targets already carry.
+  const categoryNames = [
+    ...new Set([
+      ...Object.keys(categories ?? {}),
+      ...targets.map((t) => t.category).filter(Boolean),
+    ]),
+  ].sort((a, b) => a.localeCompare(b));
+  const tagNames = [
+    ...new Set([...(knownTags ?? []), ...targets.flatMap((t) => parseTorrentTags(t.tags))]),
+  ].sort((a, b) => a.localeCompare(b));
+
+  /** The shared category of every target, or undefined when they disagree. */
+  const commonCategory = targets.every((t) => (t.category ?? "") === (targets[0]?.category ?? ""))
+    ? targets[0]?.category ?? ""
+    : undefined;
+  const targetsHaveTag = (tag: string) =>
+    targets.length > 0 && targets.every((t) => parseTorrentTags(t.tags).includes(tag));
+  const hasAnyTag = targets.some((t) => parseTorrentTags(t.tags).length > 0);
+
+  function assignCategory(category: string) {
+    setCategory.mutate(
+      { hashes: targetHashes, category },
+      {
+        onSuccess: () =>
+          toast.success(category ? `Moved to "${category}"` : "Category cleared"),
+        onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to set category"),
+      }
+    );
+  }
+
+  /** Adds the tag unless every target already carries it, in which case it is removed. */
+  function toggleTag(tag: string) {
+    const remove = targetsHaveTag(tag);
+    const mutation = remove ? removeTags : addTags;
+    mutation.mutate(
+      { hashes: targetHashes, tags: [tag] },
+      {
+        onSuccess: () => toast.success(remove ? `Removed tag "${tag}"` : `Tagged "${tag}"`),
+        onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to update tags"),
+      }
+    );
+  }
+
+  function clearTags() {
+    const tags = [...new Set(targets.flatMap((t) => parseTorrentTags(t.tags)))];
+    if (tags.length === 0) return;
+    removeTags.mutate(
+      { hashes: targetHashes, tags },
+      {
+        onSuccess: () => toast.success("Tags removed"),
+        onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to remove tags"),
+      }
+    );
+  }
 
   return (
     <>
@@ -195,6 +267,55 @@ export function TorrentMenuItems({
       <P.Item onSelect={() => runAction("reannounce", targetHashes)}>
         <Radio className="mr-2 h-4 w-4 text-purple-500 dark:text-purple-400" /> Reannounce
       </P.Item>
+
+      <P.Separator />
+
+      <P.Sub>
+        <P.SubTrigger>
+          <Folder className="mr-2 h-4 w-4 text-purple-500 dark:text-purple-400" /> Category
+        </P.SubTrigger>
+        <P.SubContent className="max-h-72 overflow-y-auto">
+          <P.Item onSelect={() => assignCategory("")}>
+            <X className="mr-2 h-4 w-4 text-fg-muted" /> No category
+            {commonCategory === "" && <Check className="ml-auto h-4 w-4 text-accent" />}
+          </P.Item>
+          {categoryNames.length > 0 && <P.Separator />}
+          {categoryNames.map((name) => (
+            <P.Item key={name} onSelect={() => assignCategory(name)}>
+              <Folder className="mr-2 h-4 w-4 text-fg-muted" />
+              <span className="truncate">{name}</span>
+              {commonCategory === name && <Check className="ml-auto h-4 w-4 text-accent" />}
+            </P.Item>
+          ))}
+          <P.Separator />
+          <P.Item onSelect={() => onRequestNewCategory()}>
+            <Plus className="mr-2 h-4 w-4 text-fg-muted" /> New category…
+          </P.Item>
+        </P.SubContent>
+      </P.Sub>
+
+      <P.Sub>
+        <P.SubTrigger>
+          <Tag className="mr-2 h-4 w-4 text-cyan-500 dark:text-cyan-400" /> Tags
+        </P.SubTrigger>
+        <P.SubContent className="max-h-72 overflow-y-auto">
+          {tagNames.length === 0 && <P.Label>No tags yet</P.Label>}
+          {tagNames.map((tag) => (
+            <P.Item key={tag} onSelect={() => toggleTag(tag)}>
+              <Tag className="mr-2 h-4 w-4 text-fg-muted" />
+              <span className="truncate">{tag}</span>
+              {targetsHaveTag(tag) && <Check className="ml-auto h-4 w-4 text-accent" />}
+            </P.Item>
+          ))}
+          <P.Separator />
+          <P.Item onSelect={() => onRequestNewTag()}>
+            <Plus className="mr-2 h-4 w-4 text-fg-muted" /> New tag…
+          </P.Item>
+          <P.Item disabled={!hasAnyTag} onSelect={() => clearTags()}>
+            <X className="mr-2 h-4 w-4 text-fg-muted" /> Remove all tags
+          </P.Item>
+        </P.SubContent>
+      </P.Sub>
 
       <P.Separator />
 

@@ -13,10 +13,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const { action, hashes, deleteFiles } = await req.json() as {
+    const { action, hashes, deleteFiles, category, tags } = await req.json() as {
       action: TorrentAction;
       hashes: string[];
       deleteFiles?: boolean;
+      /** Target category for "setCategory"; empty string clears it. */
+      category?: string;
+      /** Tag names for "addTags" / "removeTags". */
+      tags?: string[];
     };
 
     if (!action || !hashes || !Array.isArray(hashes) || hashes.length === 0) {
@@ -24,6 +28,9 @@ export async function POST(req: NextRequest) {
     }
 
     const api = new QBitAPI(session.host, session.apiToken);
+    const wantedTags = Array.isArray(tags)
+      ? tags.filter((tag): tag is string => typeof tag === "string" && tag.trim().length > 0).map((tag) => tag.trim())
+      : [];
 
     switch (action) {
       case "pause":
@@ -52,6 +59,22 @@ export async function POST(req: NextRequest) {
         break;
       case "bottomPrio":
         await api.moveTorrentsBottom(hashes);
+        break;
+      case "setCategory":
+        // An absent category is a deliberate "no category" here.
+        await api.setTorrentCategory(hashes, typeof category === "string" ? category : "");
+        break;
+      case "addTags":
+        if (wantedTags.length === 0) {
+          return NextResponse.json({ error: "At least one tag is required" }, { status: 400 });
+        }
+        await api.addTorrentTags(hashes, wantedTags);
+        break;
+      case "removeTags":
+        if (wantedTags.length === 0) {
+          return NextResponse.json({ error: "At least one tag is required" }, { status: 400 });
+        }
+        await api.removeTorrentTags(hashes, wantedTags);
         break;
       default:
         return NextResponse.json({ error: "Unknown action" }, { status: 400 });

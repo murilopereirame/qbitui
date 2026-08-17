@@ -25,10 +25,14 @@ const COLUMNS: { label: string; field?: SortField; align?: "right" }[] = [
   { label: "Ratio", field: "ratio", align: "right" },
   { label: "Seeds/Peers", field: "num_seeds", align: "right" },
   { label: "Category", field: "category" },
+  { label: "Tags", field: "tags" },
   { label: "" },
 ];
 
-const INITIAL_COL_WIDTHS = [40, 224, 112, 56, 80, 96, 96, 80, 64, 96, 112, 40];
+const INITIAL_COL_WIDTHS = [40, 224, 112, 56, 80, 96, 96, 80, 64, 96, 112, 128, 40];
+
+/** One column for the leading checkbox plus every entry in COLUMNS. */
+const COLUMN_COUNT = COLUMNS.length + 1;
 
 export function TorrentTable() {
   const { filteredTorrents, isLoading, isError, error, data } = useTorrents();
@@ -182,14 +186,14 @@ export function TorrentTable() {
             {isLoading ? (
               Array.from({ length: 6 }).map((_, i) => (
                 <tr key={i} className="border-b border-line-soft">
-                  <td colSpan={13} className="px-3 py-3">
+                  <td colSpan={COLUMN_COUNT} className="px-3 py-3">
                     <div className="h-4 bg-raise rounded animate-pulse" />
                   </td>
                 </tr>
               ))
             ) : filteredTorrents.length === 0 ? (
               <tr>
-                <td colSpan={13} className="text-center py-16 text-fg-subtle">
+                <td colSpan={COLUMN_COUNT} className="text-center py-16 text-fg-subtle">
                   <div className="flex flex-col items-center gap-2">
                     <Loader2 className="h-8 w-8 opacity-20" />
                     <span>No torrents found</span>

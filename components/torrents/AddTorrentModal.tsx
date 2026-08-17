@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useUIStore } from "@/store";
 import { useAddTorrent } from "@/hooks/useTorrents";
+import { useCategories, useTags } from "@/hooks/useTaxonomy";
 import { useTorrentPrefetch } from "@/hooks/useTorrentPrefetch";
 import { useMetadataApi } from "@/hooks/useMetadataApi";
 import { TorrentContentSelector } from "./TorrentContentSelector";
@@ -30,6 +31,14 @@ function selectAllPaths(torrents: PrefetchedTorrent[], previous: Selection): Sel
   return next;
 }
 
+/** The tag names currently typed into the comma-separated tags field. */
+function splitTags(value: string): string[] {
+  return value
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
+
 function excludedPathsFor(torrent: PrefetchedTorrent, selection: Selection): string[] {
   const selected = selection[torrent.id];
   if (!selected) return [];
@@ -45,6 +54,8 @@ export function AddTorrentModal() {
   const { addMagnet, addFile } = useAddTorrent();
   const { prefetchFiles, prefetchMagnets } = useTorrentPrefetch();
   const { url: metadataApi } = useMetadataApi();
+  const { data: categories } = useCategories();
+  const { data: knownTags } = useTags();
 
   const [activeTab, setActiveTab] = useState<"magnet" | "file">("magnet");
   const [magnetText, setMagnetText] = useState("");
@@ -290,6 +301,17 @@ export function AddTorrentModal() {
     </div>
   );
 
+  const categoryNames = Object.keys(categories ?? {}).sort((a, b) => a.localeCompare(b));
+  const selectedTags = splitTags(tags);
+
+  /** Adds or removes a tag from the comma-separated tags field. */
+  function toggleTag(tag: string) {
+    const next = selectedTags.includes(tag)
+      ? selectedTags.filter((entry) => entry !== tag)
+      : [...selectedTags, tag];
+    setTags(next.join(", "));
+  }
+
   const sharedOptions = (
     <div className="grid grid-cols-2 gap-3 pt-2 border-t border-line">
       <div className="space-y-1.5">
@@ -298,11 +320,43 @@ export function AddTorrentModal() {
       </div>
       <div className="space-y-1.5">
         <Label>Category</Label>
-        <Input placeholder="movies" value={category} onChange={(e) => setCategory(e.target.value)} />
+        <Input
+          placeholder="movies"
+          list="add-torrent-categories"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+        />
+        <datalist id="add-torrent-categories">
+          {categoryNames.map((name) => (
+            <option key={name} value={name} />
+          ))}
+        </datalist>
+        {category && !categoryNames.includes(category) && (
+          <p className="text-xs text-fg-subtle">New category — qBittorrent creates it on add.</p>
+        )}
       </div>
       <div className="space-y-1.5 col-span-2">
         <Label>Tags</Label>
         <Input placeholder="tag1, tag2" value={tags} onChange={(e) => setTags(e.target.value)} />
+        {(knownTags?.length ?? 0) > 0 && (
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {knownTags?.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                onClick={() => toggleTag(tag)}
+                className={cn(
+                  "rounded-full border px-2 py-0.5 text-xs transition-colors cursor-pointer",
+                  selectedTags.includes(tag)
+                    ? "border-blue-500/40 bg-blue-600/20 text-accent"
+                    : "border-line text-fg-muted hover:bg-hover hover:text-foreground"
+                )}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       <div className="flex items-center gap-3 col-span-2">
         <Switch id="paused" checked={paused} onCheckedChange={setPaused} />

@@ -4,12 +4,14 @@ import { useMemo, useState } from "react";
 import { Torrent } from "@/lib/types";
 import {
   CATEGORY_BADGE_COLOR,
+  TAG_BADGE_COLOR,
   formatBytes,
   formatSpeed,
   formatETA,
   formatRatio,
   getStateLabel,
   getStateColor,
+  parseTorrentTags,
   cn,
 } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +42,9 @@ import {
 import { MoreHorizontal } from "lucide-react";
 import { useUIStore } from "@/store";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
+import { CategoryDialog, TagDialog } from "./TaxonomyDialogs";
+import { useTorrentTaxonomy } from "@/hooks/useTaxonomy";
+import { toast } from "sonner";
 import {
   TorrentMenuItems,
   TorrentMenuPrimitives,
@@ -71,9 +76,13 @@ const contextPrimitives: TorrentMenuPrimitives = {
 export function TorrentRow({ torrent }: TorrentRowProps) {
   const { selectedHashes, toggleSelection, activeTorrentHash, setActiveTorrentHash } = useUIStore();
   const { deleteTorrents } = useTorrentMenuActions();
+  const { setCategory, addTags } = useTorrentTaxonomy();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
+  const [tagDialogOpen, setTagDialogOpen] = useState(false);
   const isSelected = selectedHashes.has(torrent.hash);
   const isActive = activeTorrentHash === torrent.hash;
+  const tags = parseTorrentTags(torrent.tags);
 
   // When the right-clicked row is part of a multi-selection, act on the whole
   // selection; otherwise act on just this row.
@@ -85,6 +94,21 @@ export function TorrentRow({ torrent }: TorrentRowProps) {
   function handleDelete(deleteFiles: boolean) {
     setDeleteDialogOpen(false);
     deleteTorrents(targetHashes, deleteFiles);
+  }
+
+  /** A category created from the menu is applied to whatever the menu targets. */
+  function applyNewCategory(name: string) {
+    setCategory.mutate(
+      { hashes: targetHashes, category: name },
+      { onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to set category") }
+    );
+  }
+
+  function applyNewTags(tags: string[]) {
+    addTags.mutate(
+      { hashes: targetHashes, tags },
+      { onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to add tags") }
+    );
   }
 
   return (
@@ -175,6 +199,21 @@ export function TorrentRow({ torrent }: TorrentRowProps) {
               )}
             </td>
 
+            {/* Tags */}
+            <td className="px-2 py-2 max-w-0">
+              {tags.length > 0 ? (
+                <div className="flex gap-1 overflow-hidden" title={tags.join(", ")}>
+                  {tags.map((tag) => (
+                    <Badge key={tag} className={cn("text-xs border shrink-0", TAG_BADGE_COLOR)}>
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                <span className="text-fg-subtle text-sm">—</span>
+              )}
+            </td>
+
             {/* Actions */}
             <td className="px-2 py-2 w-10">
               <DropdownMenu>
@@ -192,6 +231,8 @@ export function TorrentRow({ torrent }: TorrentRowProps) {
                     torrent={torrent}
                     targetHashes={targetHashes}
                     onRequestDelete={() => setDeleteDialogOpen(true)}
+                    onRequestNewCategory={() => setCategoryDialogOpen(true)}
+                    onRequestNewTag={() => setTagDialogOpen(true)}
                   />
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -204,6 +245,8 @@ export function TorrentRow({ torrent }: TorrentRowProps) {
             torrent={torrent}
             targetHashes={targetHashes}
             onRequestDelete={() => setDeleteDialogOpen(true)}
+            onRequestNewCategory={() => setCategoryDialogOpen(true)}
+            onRequestNewTag={() => setTagDialogOpen(true)}
           />
         </ContextMenuContent>
       </ContextMenu>
@@ -214,6 +257,19 @@ export function TorrentRow({ torrent }: TorrentRowProps) {
         torrentName={targetHashes.length === 1 ? torrent.name : undefined}
         onClose={() => setDeleteDialogOpen(false)}
         onConfirm={handleDelete}
+      />
+
+      <CategoryDialog
+        open={categoryDialogOpen}
+        mode="create"
+        onClose={() => setCategoryDialogOpen(false)}
+        onSaved={applyNewCategory}
+      />
+
+      <TagDialog
+        open={tagDialogOpen}
+        onClose={() => setTagDialogOpen(false)}
+        onCreated={applyNewTags}
       />
     </>
   );
