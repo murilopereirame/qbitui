@@ -9,7 +9,10 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/images/icon.png",
-      "bundleIdentifier": "com.qbitui.app"
+      "bundleIdentifier": "com.qbitui.app",
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "qbitUI needs access to your local network to connect to qBittorrent instances running on other devices."
+      }
     },
     "android": {
       "package": "com.qbitui.app",
@@ -35,6 +38,19 @@
           "android": {
             "image": "./assets/images/splash-icon.png",
             "imageWidth": 76
+          }
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 37,
+            "targetSdkVersion": 37,
+            "usesCleartextTraffic": true
+          },
+          "ios": {
+            "enableSceneSupport": true
           }
         }
       ]
