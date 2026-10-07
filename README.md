@@ -35,7 +35,7 @@ A modern, production-ready web interface for qBittorrent built with Next.js, Tai
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 22.12+
 - A running qBittorrent instance with WebUI enabled
 
 ### 1. Clone and install
